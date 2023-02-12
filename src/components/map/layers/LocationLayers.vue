@@ -45,6 +45,7 @@ export default {
   },
   methods: {
     startTracking (locationTrackingStarted) {
+      console.log('extent', this.view.calculateExtent())
       if (this.$q.platform.is.cordova) {
         if (!locationTrackingStarted) {
           window.BackgroundGeolocation.stop()
@@ -59,7 +60,7 @@ export default {
             desiredAccuracy: window.BackgroundGeolocation.MEDIUM_ACCURACY,
             stationaryRadius: 10,
             distanceFilter: 10, // only when using location provider: DISTANCE_FILTER_PROVIDER
-            stopOnTerminate: false,
+            stopOnTerminate: true,
             notificationTitle: 'Location tracking',
             notificationText: 'Vaša lokacija se beleži v ozadju',
             debug: true,
