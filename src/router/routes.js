@@ -10,7 +10,7 @@ const routes = [
     meta: { requireLogin: true },
     children: [
       { path: '', name: 'home', component: () => import('pages/IndexPage.vue') },
-      { path: '/someUrl', name: 'someLink', component: () => import('pages/IndexPage.vue') }
+      { path: '/caves', name: 'caves', component: () => import('pages/CaveSearchPage.vue') }
     ]
   },
 

@@ -13,6 +13,11 @@
         @resolutionChanged="resolutionChanged"/>
       <CartoLayers/>
       <LocationLayers ref="childComponentRef" :view="view"/>
+
+      <ol-vector-layer>
+        <ol-source-vector :features="markLocations">
+        </ol-source-vector>
+      </ol-vector-layer>
     </ol-map>
 
     <q-page-sticky position="bottom-right" :offset="[18, 18]">
@@ -23,6 +28,9 @@
 
 <script>
 import { ref, defineComponent } from 'vue'
+import { fromLonLat } from 'ol/proj'
+import Point from 'ol/geom/Point'
+import { Feature } from 'ol'
 import PageFullScreen from 'layouts/PageFullScreen.vue'
 import CartoLayers from 'src/components/map/layers/CartoLayers.vue'
 import LocationLayers from 'src/components/map/layers/LocationLayers.vue'
@@ -30,9 +38,10 @@ export default defineComponent({
   name: 'IndexPage',
   components: { PageFullScreen, CartoLayers, LocationLayers },
   setup () {
-    const center = ref([1637531.7171455352, 5766419.270826726])
+    const center = ref([1637531, 5766419])
     const projection = ref('EPSG:3857')
     const zoom = ref(8)
+    const markLocations = ref([])
 
     const childComponentRef = ref(null)
 
@@ -42,10 +51,19 @@ export default defineComponent({
       projection,
       zoom,
       view,
-      childComponentRef
+      childComponentRef,
+      markLocations
     }
   },
   data () {
+    if (this.$route.query.lat && this.$route.query.lng) {
+      const coords = fromLonLat([this.$route.query.lng, this.$route.query.lat])
+      const mark = new Feature(new Point(coords))
+      this.markLocations = [mark]
+      this.center = coords
+      this.zoom = 15
+    }
+
     return {
       currentCenter: this.center,
       currentZoom: this.zoom,
@@ -69,7 +87,6 @@ export default defineComponent({
     },
     centerChanged (center) {
       this.currentCenter = center
-      console.info(center)
     }
   }
 })

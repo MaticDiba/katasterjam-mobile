@@ -25,12 +25,12 @@
           </q-item-section>
         </q-item>
 
-        <q-item clickable :to="{ name: 'someLink' }">
+        <q-item clickable :to="{ name: 'caves' }">
           <q-item-section avatar>
-            <q-icon name="person" />
+            <q-icon name="egg_alt" />
           </q-item-section>
           <q-item-section>
-            <q-item-label>Some link here</q-item-label>
+            <q-item-label>Caves</q-item-label>
           </q-item-section>
         </q-item>
         <q-item clickable v-ripple @click.once="logOutButton">
