@@ -8,7 +8,7 @@ import axios from 'axios'
 // "export default () => {}" function below (which runs individually
 // for each client)
 const api = axios.create({
-  baseURL: 'https://2a01-193-77-150-111.eu.ngrok.io/',
+  baseURL: 'https://katasterjamcore-dev-as.azurewebsites.net/',
   headers: {
     'Content-Type': 'application/json'
   }
