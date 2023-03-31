@@ -1,5 +1,5 @@
 <template>
-  <ol-tile-layer ref="layerRef">
+  <ol-tile-layer z-index="2" ref="layerRef">
   </ol-tile-layer>
 </template>
 
@@ -36,18 +36,10 @@ export default {
       }
       this.wmtsSource = new WMTS(options)
 
-      layerRef.tileLayer.setVisible(this.layer.active)
+      layerRef.tileLayer.setVisible(true)
       layerRef.tileLayer.setSource(this.wmtsSource)
     }
     await loadLayer(this.layer, this.layerRef)
-  },
-  watch: {
-    layer: {
-      deep: true,
-      handler: function (newVal, oldVal) {
-        this.layerRef.tileLayer.setVisible(newVal.active)
-      }
-    }
   }
 }
 </script>

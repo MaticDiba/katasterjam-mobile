@@ -1,9 +1,11 @@
 <template>
-  <ol-tile-layer>
+  <ol-tile-layer z-index="1">
     <ol-source-osm />
   </ol-tile-layer>
-  <CustomWMTSLayer v-for="layer in mapStore.getLayers" :key="layer.name" :layer="layer"/>
-  <ol-tile-layer>
+  <template v-for="layer in mapStore.getLayers" :key="layer.name">
+    <CustomWMTSLayer :layer="layer" v-if="layer.active" />
+  </template>
+  <ol-tile-layer z-index="10">
     <ol-source-xyz url="https://services7.arcgis.com/V2VriwTjJDabpGg6/ArcGIS/rest/services/2022_marec_export_ekataster_tile_layer/MapServer/WMTS/tile/1.0.0/2022_marec_export_ekataster_tile_layer/default/default028mm/{z}/{y}/{x}.png"/>
   </ol-tile-layer>
 </template>
