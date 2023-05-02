@@ -1,0 +1,1 @@
+import{_ as r,j as e,k as t,b3 as o,F as i,E as c,H as _,m}from"./index.833812ab.js";const p={props:["organizations"]},d={key:0};function l(u,g,a,f,k,x){return e(!0),t(i,null,o(a.organizations,(n,s)=>(e(),t("span",{key:n.id},[c(_(n.name),1),s+1<a.organizations.length?(e(),t("span",d,", ")):m("",!0)]))),128)}var y=r(p,[["render",l]]);export{y as O};
