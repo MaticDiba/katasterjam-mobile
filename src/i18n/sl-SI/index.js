@@ -176,5 +176,15 @@ export default {
   required: 'Obvezno',
   submit: 'Pošlji',
   noResults: 'Ni rezultatov',
-  fetchingExcursionsData: 'Pridobivanje podatkov o ekskurzijah'
+  fetchingExcursionsData: 'Pridobivanje podatkov o ekskurzijah',
+  takePhoto: 'Posnemi fotografijo',
+  pickFromGallery: 'Izberi iz galerije',
+  locationSavedOffline: 'Lokacija shranjena offline',
+  locationSynced: 'Lokacija sinhronizirana',
+  locationCreateError: 'Napaka pri ustvarjanju lokacije. Poskusite znova.',
+  photos: 'Fotografije',
+  close: 'Zapri',
+  cameraError: 'Ni mogoče dostopati do kamere',
+  galleryError: 'Ni mogoče dostopati do galerije',
+  photoLimitReached: 'Največ 10 fotografij je dovoljenih'
 }

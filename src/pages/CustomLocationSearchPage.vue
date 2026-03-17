@@ -22,14 +22,14 @@
           <template v-slot:left>
             <q-icon name="assist_walker" />
           </template>
-          <q-item clickable @click="customLocationClick(customLocation.id)">
+          <q-item clickable @click="customLocationClick(customLocation)">
             <q-item-section avatar top>
               <q-avatar icon="info" color="primary" text-color="white" />
               <q-icon name="keyboard_double_arrow_right" size="lg" color="primary"></q-icon>
             </q-item-section>
 
             <q-item-section>
-              <q-item-label lines="1"><span v-if="customLocation.isAuthor"><q-icon name="check" /></span> {{ customLocation.id }} - {{ customLocation.name }}</q-item-label>
+              <q-item-label lines="1"><span v-if="customLocation.isAuthor"><q-icon name="check" /></span> <q-icon v-if="customLocation.id === -1" name="cloud_off" color="orange" class="q-mr-xs" /><template v-else>{{ customLocation.id }} - </template>{{ customLocation.name }}</q-item-label>
               <q-item-label caption>{{$t('type')}}: {{ customLocation.type }}, {{$t('date')}}: {{ formatDate(customLocation.createdDate) }}</q-item-label>
               <q-item-label caption>
                 {{$t('organizations')}}: <OrganizationsList :organizations="customLocation.organizations"/>
@@ -135,10 +135,10 @@ export default {
         })
       })
     },
-    customLocationClick (id) {
+    customLocationClick (customLocation) {
       this.$router.push({
         name: 'custom-locations-details',
-        params: { id }
+        params: { id: customLocation.id === -1 ? customLocation.externalId : customLocation.id }
       })
     },
     showOnMapClick (customLocation) {

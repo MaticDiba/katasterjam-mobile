@@ -175,5 +175,15 @@ export default {
   required: 'Required',
   submit: 'Submit',
   noResults: 'No results',
-  fetchingExcursionsData: 'Fetching excursions data'
+  fetchingExcursionsData: 'Fetching excursions data',
+  takePhoto: 'Take photo',
+  pickFromGallery: 'Pick from gallery',
+  locationSavedOffline: 'Location saved offline',
+  locationSynced: 'Location synced',
+  locationCreateError: 'Error creating location. Please try again.',
+  photos: 'Photos',
+  close: 'Close',
+  cameraError: 'Could not access the camera',
+  galleryError: 'Could not access the gallery',
+  photoLimitReached: 'Maximum of 10 photos allowed'
 }
