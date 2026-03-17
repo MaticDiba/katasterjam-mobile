@@ -87,7 +87,7 @@
           <q-spinner-dots color="primary" size="32px" />
         </div>
         <div v-else class="row q-gutter-sm">
-          <div v-for="(photo, index) in photos" :key="photo.id || index">
+          <div v-for="(photo, index) in photos" :key="photo.externalId || `photo-${index}`">
             <q-img
               :src="photo.url"
               style="width: 120px; height: 120px; border-radius: 8px; cursor: pointer;"
@@ -172,6 +172,10 @@ export default {
       try {
         const response = await api.get(`/api/documents/${photo.id}`, { responseType: 'blob' })
         const fullUrl = URL.createObjectURL(response.data)
+        if (!this.showPhotoDialog) {
+          URL.revokeObjectURL(fullUrl)
+          return
+        }
         this.fullPhotoUrls.push(fullUrl)
         this.selectedPhotoUrl = fullUrl
       } catch (e) {

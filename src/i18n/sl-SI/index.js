@@ -177,7 +177,7 @@ export default {
   submit: 'Pošlji',
   noResults: 'Ni rezultatov',
   fetchingExcursionsData: 'Pridobivanje podatkov o ekskurzijah',
-  takePhoto: 'Posnimi fotografijo',
+  takePhoto: 'Posnemi fotografijo',
   pickFromGallery: 'Izberi iz galerije',
   locationSavedOffline: 'Lokacija shranjena offline',
   locationSynced: 'Lokacija sinhronizirana',
