@@ -1,11 +1,15 @@
 import { defineStore } from 'pinia'
 import { Platform } from 'quasar'
+import { v4 as uuidv4 } from 'uuid'
 import { getDistance } from 'ol/sphere'
 import * as olProj from 'ol/proj'
 import { api } from 'src/boot/axios'
 import { db } from 'src/db/db'
 import { getLongDateNow } from 'src/helpers/date'
 import { useAuthStore } from 'src/stores/auth-store'
+import * as photoStorage from 'src/helpers/photo-storage'
+
+let syncPromise = null
 
 import iconNewCave from '../assets/map/markers/x_yellow.png'
 import iconBlowHole from '../assets/map/markers/x_purple.png'
@@ -74,6 +78,9 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
 
       return result
     },
+    async getByExternalId (externalId) {
+      return await db.customLocations.where('externalId').equals(externalId).first()
+    },
     async put (customLocation) {
       await db.customLocations.put(customLocation)
     },
@@ -88,6 +95,17 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
       const result = await db.customLocations.add(customLocation)
 
       return result
+    },
+    async savePhotoLocally (locationExternalId, blob, fileName, mimeType) {
+      const filePath = await photoStorage.savePhoto(blob, fileName)
+      await db.files.add({
+        externalId: uuidv4(),
+        fkId: locationExternalId,
+        id: -1,
+        filePath,
+        fileName,
+        mimeType
+      })
     },
     async tryFetchCustomLocationsForOffline () {
       this.searchParameters.lastUpdated = localStorage.getItem('lastImportCustomLocations')
@@ -234,9 +252,94 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
         }
         try {
           const response = await api.post('/api/customlocations', newLocation)
+          const locationExternalId = localLocation.externalId
           await db.customLocations.put(response.data)
+          await this.uploadPhotos(response.data.id, locationExternalId, localLocation.statusId, localLocation.organizations)
         } catch (error) {
           console.error('Error while uploading new location', error)
+        }
+      }
+    },
+    async uploadPhotos (serverId, locationExternalId, locationStatusId, organizations) {
+      // Maps location statusId → document statusId (visibility levels)
+      // 1:Public→4:Javno dostopen, 2:Private→1:Onemogočen, 3:ClubOnly→3:Člani društva, 4:Registered→5:Registrirani
+      const statusMapping = { 1: 4, 2: 1, 3: 3, 4: 5 }
+      const pendingFiles = await db.files
+        .where('fkId')
+        .equals(locationExternalId)
+        .toArray()
+
+      const filesToUpload = pendingFiles.filter(f => f.id === -1)
+      for (const fileRecord of filesToUpload) {
+        try {
+          const blob = await photoStorage.readPhotoAsBlob(fileRecord.filePath)
+          const formData = new FormData()
+          const uploadBlob = new Blob([blob], { type: fileRecord.mimeType || 'image/jpeg' })
+          formData.append('file', uploadBlob, fileRecord.fileName)
+          formData.append('data', JSON.stringify({
+            name: fileRecord.fileName,
+            typeId: 5,
+            statusId: statusMapping[locationStatusId] || 1,
+            customLocationId: serverId,
+            organizations: organizations || []
+          }))
+          const response = await api.post('/api/documents', formData, {
+            headers: { 'Content-Type': undefined }
+          })
+          await db.files.update(fileRecord.externalId, { id: response.data.id })
+        } catch (error) {
+          console.error('Error uploading photo', fileRecord.fileName, error)
+        }
+      }
+    },
+    async getLocalPhotos (locationExternalId) {
+      const files = await db.files.where('fkId').equals(locationExternalId).toArray()
+      const photos = []
+      for (const file of files) {
+        const url = await photoStorage.getPhotoUrl(file.filePath)
+        photos.push({ ...file, url, isLocal: true })
+      }
+      return photos
+    },
+    async sync () {
+      if (syncPromise) return syncPromise
+      syncPromise = (async () => {
+        try {
+          await this.uploadNew()
+          await this.uploadPendingPhotos()
+        } finally {
+          syncPromise = null
+        }
+      })()
+      return syncPromise
+    },
+    async rollbackCreate (externalId) {
+      try {
+        const files = await db.files.where('fkId').equals(externalId).toArray()
+        for (const file of files) {
+          await photoStorage.deletePhoto(file.filePath)
+        }
+        await db.files.where('fkId').equals(externalId).delete()
+        await db.customLocations.where('externalId').equals(externalId).delete()
+      } catch (err) {
+        console.error('Error rolling back location create', err)
+      }
+    },
+    async uploadPendingPhotos () {
+      const allPendingFiles = await db.files
+        .where('id')
+        .equals(-1)
+        .toArray()
+
+      const fkIds = [...new Set(allPendingFiles.map(f => f.fkId))]
+
+      for (const fkId of fkIds) {
+        const location = await db.customLocations
+          .where('externalId')
+          .equals(fkId)
+          .first()
+        if (location && location.id !== -1) {
+          await this.uploadPhotos(location.id, fkId, location.statusId, location.organizations)
         }
       }
     }

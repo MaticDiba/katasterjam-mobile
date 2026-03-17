@@ -34,14 +34,21 @@ const excursionResolver = async (to, from, next) => {
 }
 const customLocationResolver = async (to, from, next) => {
   const store = useLocalCustomLocationStore()
-  const customLocation = await store.get(to.params.id)
-  to.meta.customLocation = customLocation
-  try {
-    const response = await api.get(`/api/customLocations/${to.params.id}`)
-    to.meta.customLocation = response.data
-    await store.put(response.data)
-  } catch (error) {
-    console.log('Could not load custom locations. Error: ', error)
+  const id = to.params.id
+  const isNumericId = /^\d+$/.test(id)
+
+  if (isNumericId) {
+    const customLocation = await store.get(id)
+    to.meta.customLocation = customLocation
+    try {
+      const response = await api.get(`/api/customLocations/${id}`)
+      to.meta.customLocation = response.data
+      await store.put(response.data)
+    } catch (error) {
+      console.log('Could not load custom locations. Error: ', error)
+    }
+  } else {
+    to.meta.customLocation = await store.getByExternalId(id)
   }
 
   next()

@@ -8,7 +8,7 @@ import TileState from 'ol/TileState'
 // good idea to move this instance creation inside of the
 // "export default () => {}" function below (which runs individually
 // for each client)
-const apiUrl = 'https://katasterjamcore-dev-as.azurewebsites.net'
+const apiUrl = process.env.API_URL || 'http://localhost:5000'
 const api = axios.create({
   baseURL: apiUrl,
   headers: {

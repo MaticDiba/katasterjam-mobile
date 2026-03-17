@@ -13,3 +13,14 @@ db.version(4.2).stores({
   files: 'externalId, fkId, id, data, fileName, mimeType',
   excursions: 'externalId, id, dateOfExcursion, type, typeId, name, participants, meParticipant, requestedJoin'
 })
+
+db.version(4.3).stores({
+  files: 'externalId, fkId, id, filePath, fileName, mimeType'
+}).upgrade(tx => {
+  return tx.table('files').toCollection().modify(file => {
+    delete file.data
+    if (!file.filePath) {
+      file.filePath = ''
+    }
+  })
+})
