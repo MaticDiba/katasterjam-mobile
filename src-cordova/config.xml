@@ -6,7 +6,37 @@
         Apache Cordova Team
     </author>
     <content src="index.html" />
+    <preference name="android-compileSdkVersion" value="34" />
+    <preference name="android-targetSdkVersion" value="34" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <allow-navigation href="about:*" />
+    <allow-navigation href="https://*/*" />
+    <allow-navigation href="http://*/*" />
+    <platform name="ios">
+        <preference name="deployment-target" value="14.0" />
+        <config-file parent="NSAppTransportSecurity" target="*-Info.plist">
+            <dict>
+                <key>NSAllowsArbitraryLoadsInWebContent</key>
+                <true />
+            </dict>
+        </config-file>
+        <config-file parent="NSLocationWhenInUseUsageDescription" target="*-Info.plist">
+            <string>Za prikaz vaše lokacije na zemljevidu in beleženje koordinat jam.</string>
+        </config-file>
+        <config-file parent="NSLocationAlwaysAndWhenInUseUsageDescription" target="*-Info.plist">
+            <string>Za beleženje vaše lokacije med terenskim delom.</string>
+        </config-file>
+        <config-file parent="NSCameraUsageDescription" target="*-Info.plist">
+            <string>Za fotografiranje vhodov jam.</string>
+        </config-file>
+        <config-file parent="NSPhotoLibraryUsageDescription" target="*-Info.plist">
+            <string>Za izbiro fotografij jam iz galerije.</string>
+        </config-file>
+        <config-file parent="UIBackgroundModes" target="*-Info.plist">
+            <array>
+                <string>location</string>
+            </array>
+        </config-file>
+    </platform>
 </widget>

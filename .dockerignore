@@ -1,0 +1,9 @@
+node_modules
+dist
+.quasar
+.git
+.vscode
+npm-debug.log
+src-cordova/platforms
+src-cordova/plugins
+src-cordova/www

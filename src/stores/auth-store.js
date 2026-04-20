@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import jwtDecode from 'jwt-decode'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -111,10 +111,9 @@ export const useAuthStore = defineStore('auth', {
     setHeaderJWT () {
       const tempToken = this.token?.accessToken
       if (tempToken) {
-        api.defaults.headers.common.Authorization =
-          'Bearer ' + tempToken
+        api.setHeader('Authorization', 'Bearer ' + tempToken)
       } else {
-        api.defaults.headers.common.Authorization = ''
+        api.removeHeader('Authorization')
       }
     },
     storeLoginResponse (payload) {

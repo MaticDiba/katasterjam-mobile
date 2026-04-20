@@ -8,7 +8,7 @@ import { ref } from 'vue'
 import WMTS, { optionsFromCapabilities } from 'ol/source/WMTS'
 import { useMapStore } from 'stores/map-store'
 import { db } from 'src/db/db'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 export default {
   props: { layer: Object },
   setup () {

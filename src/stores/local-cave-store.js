@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { db } from 'src/db/db'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 import * as olProj from 'ol/proj'
 import { getDistance } from 'ol/sphere'
 import { Platform } from 'quasar'

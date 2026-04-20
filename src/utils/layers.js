@@ -1,6 +1,6 @@
 import { useMapStore } from 'src/stores/map-store'
 import { db } from 'src/db/db'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 import * as olHas from 'ol/has'
 import * as olProj from 'ol/proj'
 import XYZ from 'ol/source/XYZ'

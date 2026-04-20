@@ -23,7 +23,7 @@ import { useMapStore } from 'stores/map-store'
 import CustomWMTSLayer from './CustomWMTSLayer.vue'
 import { MVT } from 'ol/format'
 import { db } from 'src/db/db'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 
 export default {
   components: { CustomWMTSLayer },

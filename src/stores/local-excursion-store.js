@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 import { getLongDateNow } from 'src/helpers/date'
 import { db } from 'src/db/db'
 

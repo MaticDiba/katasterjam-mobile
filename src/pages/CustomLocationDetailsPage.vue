@@ -128,7 +128,7 @@ import SimpleHeaderMap from 'src/components/map/SimpleHeaderMap.vue'
 import OrganizationsList from 'src/components/organizations/OrganizationsList.vue'
 import { Feature } from 'ol'
 import { useLocalCustomLocationStore } from 'src/stores/local-custom-location-store'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 import { isOnline } from 'src/helpers/network'
 export default {
   name: 'customLocationDetailsPage',
