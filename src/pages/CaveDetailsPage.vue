@@ -107,7 +107,7 @@ import { fromLonLat } from 'ol/proj'
 import Point from 'ol/geom/Point'
 import { Feature } from 'ol'
 import OrganizationsList from 'src/components/organizations/OrganizationsList.vue'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 import { formatDate } from 'src/helpers/date'
 import SimpleHeaderMap from 'src/components/map/SimpleHeaderMap.vue'
 

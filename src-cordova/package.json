@@ -14,16 +14,27 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "cordova-android": "^11.0.0",
-    "cordova-background-geolocation-plugin": "^2.0.8",
+    "cordova-background-geolocation-plugin": "^2.3.3",
+    "cordova-ios": "^8.0.1",
     "cordova-plugin-camera": "^7.0.0",
+    "cordova-plugin-device-orientation": "^3.0.0",
     "cordova-plugin-file": "^7.0.0",
     "cordova-plugin-geolocation": "^4.1.0"
   },
   "cordova": {
     "platforms": [
-      "android"
+      "android",
+      "ios"
     ],
     "plugins": {
+      "cordova-plugin-device-orientation": {},
+      "cordova-plugin-geolocation": {
+        "GPS_REQUIRED": "true"
+      },
+      "cordova-plugin-camera": {},
+      "cordova-plugin-file": {
+        "ANDROIDX_WEBKIT_VERSION": "1.4.0"
+      },
       "cordova-background-geolocation-plugin": {
         "GOOGLE_PLAY_SERVICES_VERSION": "11+",
         "ICON": "@mipmap/ic_launcher",
@@ -32,14 +43,6 @@
         "ACCOUNT_LABEL": "@string/app_name",
         "ACCOUNT_TYPE": "$PACKAGE_NAME.account",
         "CONTENT_AUTHORITY": "$PACKAGE_NAME"
-      },
-      "cordova-plugin-device-orientation": {},
-      "cordova-plugin-geolocation": {
-        "GPS_REQUIRED": "true"
-      },
-      "cordova-plugin-camera": {},
-      "cordova-plugin-file": {
-        "ANDROIDX_WEBKIT_VERSION": "1.4.0"
       }
     }
   }

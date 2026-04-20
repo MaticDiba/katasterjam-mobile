@@ -83,7 +83,7 @@
 import { useQuasar } from 'quasar'
 import { ref } from 'vue'
 import { formatDate } from 'src/helpers/date'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 import OrganizationsList from 'src/components/organizations/OrganizationsList.vue'
 export default {
   name: 'ExcursionDetailsPage',

@@ -1,0 +1,15 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json .npmrc ./
+
+RUN npm ci
+
+RUN npm install -g @quasar/cli
+
+COPY . .
+
+EXPOSE 9000
+
+CMD ["quasar", "dev", "--hostname", "0.0.0.0", "--port", "9000"]

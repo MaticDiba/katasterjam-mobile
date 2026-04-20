@@ -6,7 +6,7 @@ import Point from 'ol/geom/Point'
 import { fromLonLat } from 'ol/proj'
 import VectorSource from 'ol/source/Vector'
 import { useLocalCavesStore } from './local-cave-store'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 
 export const useMapStore = defineStore('map', {
   state: () => ({

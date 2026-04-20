@@ -174,7 +174,7 @@ export const useLocationStore = defineStore('location', {
         this.watchId = navigator.compass.watchHeading((heading) => {
           this.rotation = heading.magneticHeading
         }, (compassError) => {
-          alert('Compass error: ' + compassError.code)
+          console.warn('Compass not available (error code: ' + compassError.code + ')')
         }, {
           frequency: 1000
         })

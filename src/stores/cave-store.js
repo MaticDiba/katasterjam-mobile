@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { Platform } from 'quasar'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 
 export const useCavesStore = defineStore('caves', {
   state: () => ({

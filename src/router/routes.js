@@ -1,4 +1,4 @@
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 import { useLocalCavesStore } from '../stores/local-cave-store'
 import { useOfflineStore } from 'stores/offline-store'
 import { useLocalCustomLocationStore } from '../stores/local-custom-location-store'

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { api } from 'src/boot/axios'
+import { api } from 'src/boot/api'
 import { Platform } from 'quasar'
 import * as olProj from 'ol/proj'
 
