@@ -16,7 +16,8 @@ const authStore = useAuthStore()
 const offlineMapsStore = useOfflineMapsStore()
 
 onMounted(async () => {
-  await offlineMapsStore.fetchMyPackages()
+  await offlineMapsStore.loadMyTiles()
+  offlineMapsStore.syncMyTilesWithServer().catch(() => {})
   await startOfflineMapHub(apiUrl, () => authStore.getAccessToken)
 })
 

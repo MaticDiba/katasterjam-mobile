@@ -36,3 +36,15 @@ db.version(4.5).stores({
     delete record.isVector
   })
 })
+
+db.version(4.6).stores({
+  myPackages: 'id, source, status, updatedAt'
+})
+
+db.version(4.7).stores({
+  offlineMaps: '++id, packageId, layerType, [packageId+layerType]'
+}).upgrade(tx => {
+  return tx.table('offlineMaps').toCollection().modify(record => {
+    if (record.enabled === undefined) record.enabled = true
+  })
+})

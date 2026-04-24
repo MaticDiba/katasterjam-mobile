@@ -15,21 +15,47 @@ import { db } from 'src/db/db'
 
 export const sourceKey = (packageId, layerType) => `${packageId}_${layerType}`
 
+const SOURCE_OWN = 'own'
+const SOURCE_LIBRARY = 'library'
+
+function toDexieRow (pkg, source) {
+  return JSON.parse(JSON.stringify({
+    id: pkg.id,
+    name: pkg.name,
+    layers: pkg.layers || [],
+    bbox: pkg.bbox,
+    minLon: pkg.minLon,
+    minLat: pkg.minLat,
+    maxLon: pkg.maxLon,
+    maxLat: pkg.maxLat,
+    minZoom: pkg.minZoom,
+    maxZoom: pkg.maxZoom,
+    status: pkg.status,
+    errorMessage: pkg.errorMessage,
+    isAuthor: pkg.isAuthor,
+    source,
+    createdAt: pkg.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }))
+}
+
 export const useOfflineMapsStore = defineStore('offline-maps', {
   state: () => ({
-    packages: [],
+    myTiles: [],
     registryPackages: [],
     downloadProgress: {},
     activeSources: {},
-    localLayersLoaded: false
+    localLayersLoaded: false,
+    myTilesLoaded: false,
+    isRegistryOffline: false
   }),
 
   getters: {
     readyPackages (state) {
-      return state.packages.filter(p => p.status === 'Ready')
+      return state.myTiles.filter(p => p.status === 'Ready')
     },
     pendingPackages (state) {
-      return state.packages.filter(p => p.status === 'Pending' || p.status === 'Generating')
+      return state.myTiles.filter(p => p.status === 'Pending' || p.status === 'Generating')
     },
     activeSourcesSnapshot (state) {
       const snapshot = {}
@@ -41,9 +67,35 @@ export const useOfflineMapsStore = defineStore('offline-maps', {
   },
 
   actions: {
-    async fetchMyPackages () {
-      const { data } = await getMyPackages()
+    async loadMyTiles () {
+      try {
+        const rows = await db.myPackages.toArray()
+        this.myTiles = rows.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''))
+      } catch (e) {
+        console.warn('Failed to read myPackages from Dexie:', e)
+        this.myTiles = []
+      }
+      this.myTilesLoaded = true
+    },
+
+    async syncMyTilesWithServer () {
+      let data
+      try {
+        const res = await getMyPackages()
+        data = res.data
+      } catch (e) {
+        console.warn('Unable to sync MyTiles with server, staying on local:', e?.message || e)
+        return false
+      }
+
+      const serverById = new Map(data.map(p => [p.id, p]))
+      const localRows = await db.myPackages.toArray()
+      const localById = new Map(localRows.map(r => [r.id, r]))
+
       for (const pkg of data) {
+        const existing = localById.get(pkg.id)
+        if (!existing) continue
+
         if (pkg.layers) {
           for (const layer of pkg.layers) {
             if (layer.status === 'Ready' && layer.generationProgress == null) {
@@ -51,20 +103,37 @@ export const useOfflineMapsStore = defineStore('offline-maps', {
             }
           }
         }
+        await db.myPackages.put(toDexieRow(pkg, existing.source || SOURCE_OWN))
       }
-      this.packages = data
+
+      for (const row of localRows) {
+        if (row.source === SOURCE_OWN && !serverById.has(row.id)) {
+          await db.myPackages.delete(row.id)
+        }
+      }
+
+      await this.loadMyTiles()
+      return true
     },
 
     async fetchRegistry (lat, lon) {
-      const { data } = await getRegistry()
-      if (lat != null && lon != null) {
-        data.sort((a, b) => {
-          const distA = this._bboxDistance(a, lat, lon)
-          const distB = this._bboxDistance(b, lat, lon)
-          return distA - distB
-        })
+      try {
+        const { data } = await getRegistry()
+        if (lat != null && lon != null) {
+          data.sort((a, b) => {
+            const distA = this._bboxDistance(a, lat, lon)
+            const distB = this._bboxDistance(b, lat, lon)
+            return distA - distB
+          })
+        }
+        this.registryPackages = data
+        this.isRegistryOffline = false
+      } catch (e) {
+        console.warn('Registry fetch failed:', e?.message || e)
+        this.registryPackages = []
+        this.isRegistryOffline = true
+        throw e
       }
-      this.registryPackages = data
     },
 
     _bboxDistance (pkg, lat, lon) {
@@ -77,8 +146,34 @@ export const useOfflineMapsStore = defineStore('offline-maps', {
 
     async requestNewPackage (payload) {
       const { data } = await requestGeneration(payload)
-      this.packages.push(data)
+      await db.myPackages.put(toDexieRow(data, SOURCE_OWN))
+      this.myTiles.unshift(data)
       return data
+    },
+
+    async downloadLayerFile (packageId, layerType) {
+      const key = sourceKey(packageId, layerType)
+
+      const existingRecord = await db.offlineMaps.where({ packageId, layerType }).first()
+      if (existingRecord) {
+        const exists = await localMBTilesExists(existingRecord.filePath)
+        if (exists) {
+          await this._ensurePackageInMyTiles(packageId)
+          return existingRecord.filePath
+        }
+        await db.offlineMaps.delete(existingRecord.id)
+      }
+
+      this.downloadProgress[key] = 0
+      const filePath = await downloadLayer(packageId, layerType, (progress) => {
+        this.downloadProgress[key] = progress
+      })
+      this.downloadProgress[key] = 1
+
+      await db.offlineMaps.add({ packageId, layerType, filePath, enabled: false })
+      await this._ensurePackageInMyTiles(packageId)
+
+      return filePath
     },
 
     async downloadAndActivateLayer (packageId, layerType) {
@@ -87,25 +182,8 @@ export const useOfflineMapsStore = defineStore('offline-maps', {
         return this.activeSources[key].source
       }
 
-      const existingRecord = await db.offlineMaps.where({ packageId, layerType }).first()
-      let filePath
-      if (existingRecord) {
-        const exists = await localMBTilesExists(existingRecord.filePath)
-        if (exists) {
-          filePath = existingRecord.filePath
-        } else {
-          console.warn('Local MBTiles file missing, will re-download')
-          await db.offlineMaps.delete(existingRecord.id)
-        }
-      }
-
-      if (!filePath) {
-        this.downloadProgress[key] = 0
-        filePath = await downloadLayer(packageId, layerType, (progress) => {
-          this.downloadProgress[key] = progress
-        })
-        this.downloadProgress[key] = 1
-      }
+      const filePath = await this.downloadLayerFile(packageId, layerType)
+      await db.offlineMaps.where({ packageId, layerType }).modify({ enabled: true })
 
       const nativeDb = await openNativeDatabase(filePath)
 
@@ -119,15 +197,23 @@ export const useOfflineMapsStore = defineStore('offline-maps', {
 
       this.activeSources[key] = active
 
-      const record = { packageId, layerType, filePath, format: active.format }
       const existing = await db.offlineMaps.where({ packageId, layerType }).first()
       if (existing) {
-        await db.offlineMaps.update(existing.id, record)
-      } else {
-        await db.offlineMaps.add(record)
+        await db.offlineMaps.update(existing.id, { ...existing, format: active.format })
       }
 
       return active.source
+    },
+
+    async _ensurePackageInMyTiles (packageId) {
+      const existing = await db.myPackages.get(packageId)
+      if (existing) return
+
+      const fromRegistry = this.registryPackages.find(p => p.id === packageId)
+      if (fromRegistry) {
+        await db.myPackages.put(toDexieRow(fromRegistry, SOURCE_LIBRARY))
+        await this.loadMyTiles()
+      }
     },
 
     async loadLocalLayers () {
@@ -143,6 +229,8 @@ export const useOfflineMapsStore = defineStore('offline-maps', {
       }
 
       for (const record of records) {
+        if (!record.enabled) continue
+
         const key = sourceKey(record.packageId, record.layerType)
         if (this.activeSources[key]) continue
 
@@ -172,10 +260,23 @@ export const useOfflineMapsStore = defineStore('offline-maps', {
       return { source, db: nativeDb, filePath, isVector: false, format, visible: true, packageId, layerType }
     },
 
-    toggleLayerVisibility (packageId, layerType) {
+    async toggleLayerVisibility (packageId, layerType) {
       const active = this.activeSources[sourceKey(packageId, layerType)]
+      if (!active) return
+      await this.setLayerVisibility(packageId, layerType, !active.visible)
+    },
+
+    async setLayerVisibility (packageId, layerType, visible) {
+      const key = sourceKey(packageId, layerType)
+      const active = this.activeSources[key]
       if (active) {
-        active.visible = !active.visible
+        active.visible = !!visible
+      }
+      await db.offlineMaps
+        .where({ packageId, layerType })
+        .modify({ enabled: !!visible })
+      if (!visible) {
+        this.deactivateLayer(packageId, layerType)
       }
     },
 
@@ -188,7 +289,23 @@ export const useOfflineMapsStore = defineStore('offline-maps', {
       }
     },
 
-    async removePackage (packageId) {
+    async removeLayerFromDevice (packageId, layerType) {
+      this.deactivateLayer(packageId, layerType)
+
+      const record = await db.offlineMaps.where({ packageId, layerType }).first()
+      if (record) {
+        try {
+          await deleteLocalMBTiles(record.filePath)
+        } catch (e) {
+          console.warn('Failed to delete MBTiles file:', e)
+        }
+        await db.offlineMaps.delete(record.id)
+      }
+
+      delete this.downloadProgress[sourceKey(packageId, layerType)]
+    },
+
+    async removePackageFromDevice (packageId) {
       let records = []
       try {
         records = await db.offlineMaps.where('packageId').equals(packageId).toArray()
@@ -212,9 +329,45 @@ export const useOfflineMapsStore = defineStore('offline-maps', {
       }
 
       await db.offlineMaps.where('packageId').equals(packageId).delete()
+      await db.myPackages.delete(packageId)
+      this.myTiles = this.myTiles.filter(p => p.id !== packageId)
+    },
 
+    async removePackageFromServer (packageId) {
       await deletePackage(packageId)
-      this.packages = this.packages.filter(p => p.id !== packageId)
+      await this.removePackageFromDevice(packageId)
+      this.registryPackages = this.registryPackages.filter(p => p.id !== packageId)
+    },
+
+    async applyGenerationProgressUpdate (packageId, layerType, progress) {
+      const pkg = this.myTiles.find(p => p.id === packageId)
+      if (!pkg) return
+      const layer = pkg.layers?.find(l => l.layerType === layerType)
+      if (layer) {
+        layer.generationProgress = progress
+      }
+      try {
+        await db.myPackages.put(toDexieRow(pkg, SOURCE_OWN))
+      } catch (e) {
+        console.warn('Failed to persist generation progress:', e)
+      }
+    },
+
+    async applyGenerationComplete (packageId, status) {
+      const pkg = this.myTiles.find(p => p.id === packageId)
+      if (pkg) {
+        pkg.status = status
+        try {
+          await db.myPackages.put(toDexieRow(pkg, SOURCE_OWN))
+        } catch (e) {
+          console.warn('Failed to persist generation complete:', e)
+        }
+      }
+      try {
+        await this.syncMyTilesWithServer()
+      } catch (e) {
+        console.warn('Sync after completion failed:', e)
+      }
     }
   }
 })

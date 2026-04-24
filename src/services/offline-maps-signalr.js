@@ -16,22 +16,12 @@ export async function startOfflineMapHub (apiUrl, getToken) {
 
   connection.on('OnGenerationProgress', (packageId, layerType, progress) => {
     const store = useOfflineMapsStore()
-    const pkg = store.packages.find(p => p.id === packageId)
-    if (!pkg) return
-
-    const layer = pkg.layers?.find(l => l.layerType === layerType)
-    if (layer) {
-      layer.generationProgress = progress
-    }
+    store.applyGenerationProgressUpdate(packageId, layerType, progress)
   })
 
   connection.on('OnGenerationComplete', (packageId, status) => {
     const store = useOfflineMapsStore()
-    const pkg = store.packages.find(p => p.id === packageId)
-    if (pkg) {
-      pkg.status = status
-    }
-    store.fetchMyPackages()
+    store.applyGenerationComplete(packageId, status)
   })
 
   try {
