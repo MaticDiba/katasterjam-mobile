@@ -1,5 +1,5 @@
 <template>
-  <ol-vector-layer>
+  <ol-vector-layer :zIndex="1000">
     <ol-source-vector ref="vectorSource">
     <ol-feature v-for="customLocation in customLocations" :key="customLocation.id" :properties="{
         'id': customLocation.id,

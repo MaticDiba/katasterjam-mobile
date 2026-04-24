@@ -19,7 +19,7 @@
       <LocationLayers
         :view="view"
         @centerChanged="centerChanged"/>
-      <CustomLocationLayers v-if="customLocations"/>
+      <CustomLocationLayers v-if="mapStore.getCustomLocationsVisible"/>
       <ol-vector-layer>
         <ol-source-vector :features="markLocations">
         </ol-source-vector>
@@ -27,20 +27,19 @@
       <q-resize-observer @resize="onScreenOrientationChange" />
     </ol-map>
     <q-page-sticky position="top-right" :offset="[18, 18]">
-      <q-fab
-        size="100px"
-        external-label
+      <q-btn
+        fab
         color="purple"
         icon="layers"
-        direction="left"
-      >
-        <q-fab-action v-for="layer in mapStore.getLayers" :key="layer.name" padding="3px" label-class="bg-grey-3 text-grey-8" external-label label-position="bottom"
-          :color="layer.active ? 'red' : 'primary'"
-          @click="layer.active = !layer.active"
-          :icon="`img:${layer.preview}`"
-          :label="layer.label" />
-      </q-fab>
+        @click="layerChooserOpen = true"
+      />
     </q-page-sticky>
+
+    <LayerChooserSheet
+      v-model="layerChooserOpen"
+      :can-create="canCreateOfflineMap"
+      @create-click="showOfflineMapDialog = true"
+    />
 
     <q-page-sticky position="bottom-left" :offset="[18, 18]">
       <q-btn fab :icon="isCenterFixed ? 'my_location' : 'location_searching'" color="accent" @click="myLocationClicked" />
@@ -52,44 +51,147 @@
         color="purple"
         icon="add"
         direction="up">
-        <q-fab-action :disable="currentZoom < 14" label-position="right" color="primary" @click="storeDataForOffline" icon="wifi_off" label="Offline" />
+        <q-fab-action
+          label-position="right"
+          color="primary"
+          :disable="!canCreateOfflineMap"
+          @click="openOfflineMapDialog"
+          icon="cloud_download"
+          :label="$t('offlineMapFabLabel')"
+        >
+          <q-tooltip v-if="!canCreateOfflineMap" anchor="center left" self="center right">
+            {{ $t('zoomInToCreateOffline') }}
+          </q-tooltip>
+        </q-fab-action>
         <q-fab-action label-position="right" color="secondary" :icon="trackLocationIcon ? 'stop_circle' : 'play_arrow'"  label="Start track" @click="trackingClicked" />
       </q-fab>
     </q-page-sticky>
     <DetailsDrawer />
-    <OfflineConfirmDialog />
     <AddLocation />
+
+    <q-dialog v-model="showOfflineMapDialog" noBackdropDismiss>
+      <q-card style="width: 300px" class="q-px-sm q-pb-md">
+        <q-form @submit.prevent="submitOfflineMapRequest" class="q-gutter-md">
+          <q-card-section>
+            <div class="text-h6">{{ $t('dataForOffline') }}</div>
+          </q-card-section>
+          <q-card-section>
+            <q-input
+              v-model="offlineForm.name"
+              :label="$t('offlineDataName')"
+              dense
+              outlined
+              :rules="[val => (val && val.length > 0) || 'Name is required']"
+            />
+          </q-card-section>
+          <q-item-label header>{{ $t('mapLayers') }}</q-item-label>
+          <q-item dense>
+            <q-item-section avatar>
+              <q-checkbox v-model="offlineForm.layers" val="VectorBasemap" color="teal" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ $t('vectorBasemapLayer') }}</q-item-label>
+              <q-item-label caption>{{ $t('vectorBasemapLayerDescription') }}</q-item-label>
+            </q-item-section>
+          </q-item>
+          <q-item dense>
+            <q-item-section avatar>
+              <q-checkbox v-model="offlineForm.layers" val="LidarSkyView" color="teal" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ $t('lidarMapLayer') }}</q-item-label>
+              <q-item-label caption>{{ $t('lidarMapLayerDescription') }}</q-item-label>
+            </q-item-section>
+          </q-item>
+          <q-item dense>
+            <q-item-section avatar top>
+              <q-checkbox v-model="offlineForm.layers" val="Ortho" color="teal" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ $t('orthoMapLayer') }}</q-item-label>
+              <q-item-label caption>{{ $t('orthoMapLayerDescription') }}</q-item-label>
+            </q-item-section>
+          </q-item>
+          <div class="q-px-md">
+            <div class="text-caption text-grey q-mb-xs">Zoom range</div>
+            <div class="row q-col-gutter-sm">
+              <div class="col-6">
+                <q-input
+                  v-model.number="offlineForm.minZoom"
+                  label="Min zoom"
+                  type="number"
+                  dense
+                  outlined
+                  :rules="[val => (val >= 0 && val <= 19) || '0-19']"
+                />
+              </div>
+              <div class="col-6">
+                <q-input
+                  v-model.number="offlineForm.maxZoom"
+                  label="Max zoom"
+                  type="number"
+                  dense
+                  outlined
+                  :rules="[val => (val >= 0 && val <= 19) || '0-19']"
+                />
+              </div>
+            </div>
+          </div>
+          <q-card-actions align="center" class="q-mt-md">
+            <q-btn
+              type="submit"
+              color="primary"
+              :label="$t('download')"
+              :loading="isRequestingOffline"
+              :disable="offlineForm.layers.length === 0"
+            />
+            <q-btn :label="$t('cancel')" color="primary" flat class="q-ml-sm" @click="showOfflineMapDialog = false" />
+          </q-card-actions>
+        </q-form>
+      </q-card>
+    </q-dialog>
   </PageFullScreen>
 </template>
 
 <script>
 import { ref, defineComponent } from 'vue'
-import { fromLonLat } from 'ol/proj'
+import { fromLonLat, toLonLat } from 'ol/proj'
 import Point from 'ol/geom/Point'
 import { Feature } from 'ol'
 import PageFullScreen from 'layouts/PageFullScreen.vue'
 import CartoLayers from 'src/components/map/layers/CartoLayers.vue'
 import LocationLayers from 'src/components/map/layers/LocationLayers.vue'
 import CustomLocationLayers from 'src/components/map/layers/CustomLocationLayers.vue'
+import LayerChooserSheet from 'src/components/map/layers/LayerChooserSheet.vue'
 import DetailsDrawer from 'src/components/map/drawer/DetailsDrawer.vue'
-import OfflineConfirmDialog from 'src/components/offline/OfflineConfirmDialog.vue'
 import AddLocation from 'src/components/custom-locations/AddLocation.vue'
 import { useLocationStore } from 'stores/location-store'
 import { useMapStore } from 'stores/map-store'
-import { useOfflineStore } from 'stores/offline-store'
+import { useOfflineMapsStore } from 'stores/offline-maps-store'
+
+export const MIN_CREATE_OFFLINE_ZOOM = 14
+
 export default defineComponent({
   name: 'IndexPage',
-  components: { PageFullScreen, CartoLayers, LocationLayers, CustomLocationLayers, DetailsDrawer, OfflineConfirmDialog, AddLocation },
+  components: { PageFullScreen, CartoLayers, LocationLayers, CustomLocationLayers, LayerChooserSheet, DetailsDrawer, AddLocation },
   setup () {
     const locationStore = useLocationStore()
     const mapStore = useMapStore()
-    const offlineStore = useOfflineStore()
-    const center = ref([1637531, 5766419])
+    const offlineMapsStore = useOfflineMapsStore()
+    const center = ref(mapStore.lastCenter ?? [1637531, 5766419])
     const projection = ref('EPSG:3857')
-    const zoom = ref(8)
-    const customLocations = ref(false)
+    const zoom = ref(mapStore.lastZoom ?? 8)
     const markLocations = ref([])
     const goTo = ref(null)
+    const showOfflineMapDialog = ref(false)
+    const isRequestingOffline = ref(false)
+    const layerChooserOpen = ref(false)
+    const offlineForm = ref({
+      name: '',
+      layers: [],
+      minZoom: 5,
+      maxZoom: 18
+    })
 
     const view = ref('')
     const mapRef = ref('')
@@ -104,9 +206,12 @@ export default defineComponent({
       mapRef,
       markLocations,
       goTo,
-      customLocations,
       mapStore,
-      offlineStore
+      offlineMapsStore,
+      showOfflineMapDialog,
+      isRequestingOffline,
+      offlineForm,
+      layerChooserOpen
     }
   },
   data () {
@@ -118,7 +223,9 @@ export default defineComponent({
       this.zoom = 15
       this.goTo = this.$route.query.navigate ? mark : null
     }
-    this.customLocations = this.$route.query.customLocation
+    if (this.$route.query.customLocation) {
+      this.mapStore.setCustomLocationsVisible(true)
+    }
 
     return {
       currentCenter: this.center,
@@ -136,18 +243,27 @@ export default defineComponent({
     },
     isCenterFixed () {
       return this.fixedCenter
+    },
+    canCreateOfflineMap () {
+      return (this.currentZoom || 0) >= MIN_CREATE_OFFLINE_ZOOM
     }
   },
   methods: {
     async onMapClick (evt) {
       if (evt.coordinate) {
-        const featuresClick = this.mapRef.map.getFeaturesAtPixel(evt.pixel)
+        const featuresClick = this.mapRef.map.getFeaturesAtPixel(evt.pixel, {
+          layerFilter: (layer) => {
+            const name = layer.get('name')
+            return name !== 'vector-basemap' && name !== 'vector-contours' && !layer.get('offline')
+          }
+        })
         await this.mapStore.mapClick(evt.coordinate, featuresClick)
       }
     },
     zoomChanged (currentZoom) {
       this.currentZoom = currentZoom
       this.mapStore.updateExtent(this.mapRef.map.getView().calculateExtent())
+      this.mapStore.saveViewState(null, currentZoom)
     },
     trackingClicked (evt) {
       this.locationStore.toggleLocationTracking()
@@ -170,6 +286,7 @@ export default defineComponent({
         return
       }
       this.currentCenter = center
+      this.mapStore.saveViewState(center, null)
       if (this.view.getInteracting()) {
         this.fixedCenter = false
       } else if (this.fixedCenter) {
@@ -179,8 +296,44 @@ export default defineComponent({
     onScreenOrientationChange () {
       this.mapRef.updateSize()
     },
-    storeDataForOffline () {
-      this.offlineStore.showDialog()
+    openOfflineMapDialog () {
+      if (!this.canCreateOfflineMap) {
+        this.$q.notify({ type: 'info', message: this.$t('zoomInToCreateOffline') })
+        return
+      }
+      this.showOfflineMapDialog = true
+    },
+    async submitOfflineMapRequest () {
+      if (!this.canCreateOfflineMap) {
+        this.$q.notify({ type: 'info', message: this.$t('zoomInToCreateOffline') })
+        return
+      }
+      this.isRequestingOffline = true
+      try {
+        const extent = this.mapStore.getExtent
+        const [minLon, minLat] = toLonLat([extent[0], extent[1]])
+        const [maxLon, maxLat] = toLonLat([extent[2], extent[3]])
+        const payload = {
+          name: this.offlineForm.name,
+          minLon,
+          minLat,
+          maxLon,
+          maxLat,
+          layers: [...this.offlineForm.layers],
+          minZoom: this.offlineForm.minZoom,
+          maxZoom: this.offlineForm.maxZoom
+        }
+        await this.offlineMapsStore.requestNewPackage(payload)
+        this.$q.notify({ type: 'positive', message: 'Offline map request submitted' })
+        this.offlineForm.name = ''
+        this.offlineForm.layers = []
+        this.showOfflineMapDialog = false
+      } catch (error) {
+        const msg = error?.response?.data?.message || error?.message || 'Request failed'
+        this.$q.notify({ type: 'negative', message: msg })
+      } finally {
+        this.isRequestingOffline = false
+      }
     }
   },
   watch: {
@@ -195,6 +348,7 @@ export default defineComponent({
     this.mapRef.map.on('click', async (evt) => {
       await this.onMapClick(evt)
     })
+    this.offlineMapsStore.loadLocalLayers()
   }
 })
 </script>

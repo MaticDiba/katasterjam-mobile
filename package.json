@@ -19,6 +19,7 @@
     "build-mobile-ios-prod": "cross-env API_URL=https://api.katasterjam.si quasar build -m ios --debug"
   },
   "dependencies": {
+    "@microsoft/signalr": "^10.0.0",
     "@quasar/extras": "^1.16.11",
     "dexie": "^3.2.3",
     "jwt-decode": "^3.1.2",
@@ -29,6 +30,8 @@
     "vue": "^3.4.22",
     "vue-i18n": "^9.0.0",
     "vue-router": "^4.3.0",
+    "ol-mapbox-style": "^12.3.5",
+    "pako": "^2.1.0",
     "vue3-openlayers": "^7.0.0"
   },
   "devDependencies": {

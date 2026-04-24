@@ -19,7 +19,8 @@
     "cordova-plugin-camera": "^7.0.0",
     "cordova-plugin-device-orientation": "^3.0.0",
     "cordova-plugin-file": "^7.0.0",
-    "cordova-plugin-geolocation": "^4.1.0"
+    "cordova-plugin-geolocation": "^4.1.0",
+    "cordova-sqlite-storage": "^7.0.0"
   },
   "cordova": {
     "platforms": [
@@ -43,7 +44,8 @@
         "ACCOUNT_LABEL": "@string/app_name",
         "ACCOUNT_TYPE": "$PACKAGE_NAME.account",
         "CONTENT_AUTHORITY": "$PACKAGE_NAME"
-      }
+      },
+      "cordova-sqlite-storage": {}
     }
   }
 }
