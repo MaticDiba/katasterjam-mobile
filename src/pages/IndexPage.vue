@@ -169,7 +169,7 @@ import { useLocationStore } from 'stores/location-store'
 import { useMapStore } from 'stores/map-store'
 import { useOfflineMapsStore } from 'stores/offline-maps-store'
 
-export const MIN_CREATE_OFFLINE_ZOOM = 12
+export const MIN_CREATE_OFFLINE_ZOOM = 14
 
 export default defineComponent({
   name: 'IndexPage',
@@ -189,8 +189,8 @@ export default defineComponent({
     const offlineForm = ref({
       name: '',
       layers: [],
-      minZoom: 10,
-      maxZoom: 19
+      minZoom: 5,
+      maxZoom: 18
     })
 
     const view = ref('')
