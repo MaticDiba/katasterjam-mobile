@@ -40,7 +40,10 @@ export const useMapStore = defineStore('map', {
     clickedFeature: {},
     clickLocation: [],
     extent: [],
-    cavesSourceInstance: null
+    cavesSourceInstance: null,
+    lastCenter: null,
+    lastZoom: null,
+    customLocationsVisible: localStorage.getItem('customLocationsVisible') === 'true'
   }),
   getters: {
     getLayers (state) {
@@ -63,6 +66,9 @@ export const useMapStore = defineStore('map', {
     },
     getViewProjection (state) {
       return state.mapRef.map.getView().getProjection()
+    },
+    getCustomLocationsVisible (state) {
+      return state.customLocationsVisible
     }
   },
   actions: {
@@ -117,6 +123,14 @@ export const useMapStore = defineStore('map', {
     },
     saveMapRef (mapRef) {
       this.mapRef = mapRef
+    },
+    saveViewState (center, zoom) {
+      if (center) this.lastCenter = center
+      if (typeof zoom === 'number') this.lastZoom = zoom
+    },
+    setCustomLocationsVisible (visible) {
+      this.customLocationsVisible = !!visible
+      localStorage.setItem('customLocationsVisible', String(!!visible))
     },
     async getCavesFromLocalStorage (coordinates) {
       const lngLat = olProj.toLonLat(coordinates)

@@ -199,7 +199,8 @@ export default {
         properties: { name: 'vector-basemap' }
       })
       const contoursLayer = new VectorTileLayer({
-        properties: { name: 'vector-contours' }
+        properties: { name: 'vector-contours' },
+        minZoom: 10
       })
 
       map.getLayers().insertAt(0, basemapLayer)

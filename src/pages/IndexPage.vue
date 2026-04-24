@@ -19,7 +19,7 @@
       <LocationLayers
         :view="view"
         @centerChanged="centerChanged"/>
-      <CustomLocationLayers v-if="customLocations"/>
+      <CustomLocationLayers v-if="mapStore.getCustomLocationsVisible"/>
       <ol-vector-layer>
         <ol-source-vector :features="markLocations">
         </ol-source-vector>
@@ -155,7 +155,6 @@
 
 <script>
 import { ref, defineComponent } from 'vue'
-import { useQuasar } from 'quasar'
 import { fromLonLat, toLonLat } from 'ol/proj'
 import Point from 'ol/geom/Point'
 import { Feature } from 'ol'
@@ -176,14 +175,12 @@ export default defineComponent({
   name: 'IndexPage',
   components: { PageFullScreen, CartoLayers, LocationLayers, CustomLocationLayers, LayerChooserSheet, DetailsDrawer, AddLocation },
   setup () {
-    const $q = useQuasar()
     const locationStore = useLocationStore()
     const mapStore = useMapStore()
     const offlineMapsStore = useOfflineMapsStore()
-    const center = ref([1637531, 5766419])
+    const center = ref(mapStore.lastCenter ?? [1637531, 5766419])
     const projection = ref('EPSG:3857')
-    const zoom = ref(8)
-    const customLocations = ref(false)
+    const zoom = ref(mapStore.lastZoom ?? 8)
     const markLocations = ref([])
     const goTo = ref(null)
     const showOfflineMapDialog = ref(false)
@@ -209,8 +206,6 @@ export default defineComponent({
       mapRef,
       markLocations,
       goTo,
-      customLocations,
-      $q,
       mapStore,
       offlineMapsStore,
       showOfflineMapDialog,
@@ -228,7 +223,9 @@ export default defineComponent({
       this.zoom = 15
       this.goTo = this.$route.query.navigate ? mark : null
     }
-    this.customLocations = this.$route.query.customLocation
+    if (this.$route.query.customLocation) {
+      this.mapStore.setCustomLocationsVisible(true)
+    }
 
     return {
       currentCenter: this.center,
@@ -266,6 +263,7 @@ export default defineComponent({
     zoomChanged (currentZoom) {
       this.currentZoom = currentZoom
       this.mapStore.updateExtent(this.mapRef.map.getView().calculateExtent())
+      this.mapStore.saveViewState(null, currentZoom)
     },
     trackingClicked (evt) {
       this.locationStore.toggleLocationTracking()
@@ -288,6 +286,7 @@ export default defineComponent({
         return
       }
       this.currentCenter = center
+      this.mapStore.saveViewState(center, null)
       if (this.view.getInteracting()) {
         this.fixedCenter = false
       } else if (this.fixedCenter) {

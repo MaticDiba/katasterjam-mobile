@@ -245,7 +245,6 @@
 
 <script>
 import { ref } from 'vue'
-import { useQuasar } from 'quasar'
 import { liveQuery } from 'dexie'
 import { useOfflineMapsStore } from 'stores/offline-maps-store'
 import { useMapStore } from 'stores/map-store'
@@ -265,7 +264,6 @@ export default {
   name: 'OfflineMapManagement',
 
   setup () {
-    const $q = useQuasar()
     const offlineMapsStore = useOfflineMapsStore()
     const mapStore = useMapStore()
 
@@ -275,7 +273,6 @@ export default {
     const downloadedKeys = ref(new Set())
 
     return {
-      $q,
       offlineMapsStore,
       mapStore,
       activeTab,

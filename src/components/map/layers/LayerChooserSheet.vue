@@ -28,6 +28,28 @@
 
           <q-separator class="q-my-sm" />
 
+          <q-item-label header>{{ $t('overlayLayersSection') }}</q-item-label>
+          <q-item clickable @click="toggleCustomLocations">
+            <q-item-section avatar>
+              <q-avatar rounded size="44px" color="orange-1" text-color="orange">
+                <q-icon name="place" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ $t('customLocationsLayer') }}</q-item-label>
+              <q-item-label caption lines="2">{{ $t('customLocationsLayerDescription') }}</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-toggle
+                :model-value="mapStore.getCustomLocationsVisible"
+                color="teal"
+                @click.stop="toggleCustomLocations"
+              />
+            </q-item-section>
+          </q-item>
+
+          <q-separator class="q-my-sm" />
+
           <q-item-label header>{{ $t('offlineLayersSection') }}</q-item-label>
 
           <div v-if="offlineGroups.length === 0" class="q-pa-md text-center text-grey-7">
@@ -81,7 +103,6 @@
 <script>
 import { ref } from 'vue'
 import { liveQuery } from 'dexie'
-import { useQuasar } from 'quasar'
 import { useMapStore } from 'stores/map-store'
 import { useOfflineMapsStore, sourceKey } from 'stores/offline-maps-store'
 import { db } from 'src/db/db'
@@ -121,12 +142,11 @@ export default {
   emits: ['update:modelValue', 'create-click'],
 
   setup () {
-    const $q = useQuasar()
     const mapStore = useMapStore()
     const offlineMapsStore = useOfflineMapsStore()
     const downloadedKeys = ref(new Set())
 
-    return { $q, mapStore, offlineMapsStore, downloadedKeys }
+    return { mapStore, offlineMapsStore, downloadedKeys }
   },
 
   computed: {
@@ -192,6 +212,10 @@ export default {
       }
       this.deactivateAllLayers()
       layer.active = true
+    },
+
+    toggleCustomLocations () {
+      this.mapStore.setCustomLocationsVisible(!this.mapStore.getCustomLocationsVisible)
     },
 
     async selectOfflineLayer (packageId, layerType) {
