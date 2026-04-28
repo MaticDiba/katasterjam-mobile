@@ -1,40 +1,39 @@
 import { Platform } from 'quasar'
 
-const PHOTOS_DIR = 'photos'
-let dirReady = false
+const readyDirs = new Set()
 
-function ensurePhotosDir () {
-  if (dirReady) return Promise.resolve()
+function ensureDir (dir) {
+  if (readyDirs.has(dir)) return Promise.resolve()
 
   if (Platform.is.cordova) {
     return new Promise((resolve, reject) => {
       window.resolveLocalFileSystemURL(cordova.file.dataDirectory, (rootDir) => {
-        rootDir.getDirectory(PHOTOS_DIR, { create: true }, () => {
-          dirReady = true
+        rootDir.getDirectory(dir, { create: true }, () => {
+          readyDirs.add(dir)
           resolve()
         }, reject)
       }, reject)
     })
   }
 
-  dirReady = true
+  readyDirs.add(dir)
   return Promise.resolve()
 }
 
-function getCordovaPhotosPath () {
-  return cordova.file.dataDirectory + PHOTOS_DIR + '/'
+function cordovaDirPath (dir) {
+  return cordova.file.dataDirectory + dir + '/'
 }
 
-export async function savePhoto (blob, fileName) {
-  await ensurePhotosDir()
+export async function saveFile (blob, fileName, dir = 'photos') {
+  await ensureDir(dir)
   const uniqueName = `${Date.now()}-${fileName}`
 
   if (Platform.is.cordova) {
     return new Promise((resolve, reject) => {
-      window.resolveLocalFileSystemURL(getCordovaPhotosPath(), (dirEntry) => {
+      window.resolveLocalFileSystemURL(cordovaDirPath(dir), (dirEntry) => {
         dirEntry.getFile(uniqueName, { create: true, exclusive: false }, (fileEntry) => {
           fileEntry.createWriter((writer) => {
-            writer.onwriteend = () => resolve(getCordovaPhotosPath() + uniqueName)
+            writer.onwriteend = () => resolve(cordovaDirPath(dir) + uniqueName)
             writer.onerror = reject
             writer.write(blob)
           }, reject)
@@ -44,20 +43,20 @@ export async function savePhoto (blob, fileName) {
   }
 
   const root = await navigator.storage.getDirectory()
-  const photosDir = await root.getDirectoryHandle(PHOTOS_DIR, { create: true })
-  const fileHandle = await photosDir.getFileHandle(uniqueName, { create: true })
+  const subDir = await root.getDirectoryHandle(dir, { create: true })
+  const fileHandle = await subDir.getFileHandle(uniqueName, { create: true })
   const writable = await fileHandle.createWritable()
   await writable.write(blob)
   await writable.close()
-  return PHOTOS_DIR + '/' + uniqueName
+  return dir + '/' + uniqueName
 }
 
-export async function getPhotoUrl (filePath) {
-  const blob = await readPhotoAsBlob(filePath)
+export async function getFileUrl (filePath) {
+  const blob = await readFileAsBlob(filePath)
   return URL.createObjectURL(blob)
 }
 
-export async function readPhotoAsBlob (filePath) {
+export async function readFileAsBlob (filePath) {
   if (Platform.is.cordova) {
     if (filePath.startsWith('content://')) {
       return new Promise((resolve, reject) => {
@@ -79,7 +78,7 @@ export async function readPhotoAsBlob (filePath) {
         fileEntry.file((file) => {
           const reader = new FileReader()
           reader.onloadend = () => {
-            resolve(new Blob([reader.result], { type: file.type || 'image/jpeg' }))
+            resolve(new Blob([reader.result], { type: file.type || 'application/octet-stream' }))
           }
           reader.onerror = reject
           reader.readAsArrayBuffer(file)
@@ -88,31 +87,38 @@ export async function readPhotoAsBlob (filePath) {
     })
   }
 
-  const fileName = filePath.replace(PHOTOS_DIR + '/', '')
+  const slashIndex = filePath.indexOf('/')
+  const dir = filePath.substring(0, slashIndex)
+  const fileName = filePath.substring(slashIndex + 1)
   const root = await navigator.storage.getDirectory()
-  const photosDir = await root.getDirectoryHandle(PHOTOS_DIR)
-  const fileHandle = await photosDir.getFileHandle(fileName)
+  const subDir = await root.getDirectoryHandle(dir)
+  const fileHandle = await subDir.getFileHandle(fileName)
   return await fileHandle.getFile()
 }
 
-export async function deletePhoto (filePath) {
+export async function deleteFile (filePath) {
   if (Platform.is.cordova) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       window.resolveLocalFileSystemURL(filePath, (fileEntry) => {
-        fileEntry.remove(resolve, reject)
+        fileEntry.remove(resolve, (err) => {
+          console.warn('File delete failed', err)
+          resolve()
+        })
       }, (err) => {
-        console.warn('Photo already deleted or not found', err)
+        console.warn('File already deleted or not found', err)
         resolve()
       })
     })
   }
 
   try {
-    const fileName = filePath.replace(PHOTOS_DIR + '/', '')
+    const slashIndex = filePath.indexOf('/')
+    const dir = filePath.substring(0, slashIndex)
+    const fileName = filePath.substring(slashIndex + 1)
     const root = await navigator.storage.getDirectory()
-    const photosDir = await root.getDirectoryHandle(PHOTOS_DIR)
-    await photosDir.removeEntry(fileName)
+    const subDir = await root.getDirectoryHandle(dir)
+    await subDir.removeEntry(fileName)
   } catch (err) {
-    console.warn('Photo already deleted or not found', err)
+    console.warn('File already deleted or not found', err)
   }
 }

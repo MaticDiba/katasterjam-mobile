@@ -48,3 +48,7 @@ db.version(4.7).stores({
     if (record.enabled === undefined) record.enabled = true
   })
 })
+
+db.version(4.8).stores({
+  gpxTracks: 'externalId, id, fkExcursionId, name, statusId, filePath, fileName, mimeType, createdAt, syncedAt'
+})

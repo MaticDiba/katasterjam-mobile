@@ -9,6 +9,7 @@ import { register } from 'ol/proj/proj4'
 import { useAuthStore } from 'stores/auth-store'
 import { useLocationStore } from 'stores/location-store'
 import { useLocalCustomLocationStore } from 'stores/local-custom-location-store'
+import { useLocalGpxStore } from 'stores/local-gpx-store'
 import { initNetworkStatus, onOnline } from 'src/helpers/network'
 
 proj4.defs('EPSG:3912', '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=bessel +towgs84=426.9,142.6,460.1,4.91,4.49,-12.42,17.1 +units=m +no_defs')
@@ -23,11 +24,13 @@ export default defineComponent({
     const store = useAuthStore()
     const locationStore = useLocationStore()
     const localCustomLocationStore = useLocalCustomLocationStore()
+    const localGpxStore = useLocalGpxStore()
 
     initNetworkStatus()
     onOnline(async () => {
       if (store.isAuthenticated) {
         await localCustomLocationStore.sync()
+        await localGpxStore.sync()
       }
     })
 

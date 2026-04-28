@@ -7,7 +7,7 @@ import { api } from 'src/boot/api'
 import { db } from 'src/db/db'
 import { getLongDateNow } from 'src/helpers/date'
 import { useAuthStore } from 'src/stores/auth-store'
-import * as photoStorage from 'src/helpers/photo-storage'
+import * as fileStorage from 'src/helpers/file-storage'
 
 let syncPromise = null
 
@@ -97,7 +97,7 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
       return result
     },
     async savePhotoLocally (locationExternalId, blob, fileName, mimeType) {
-      const filePath = await photoStorage.savePhoto(blob, fileName)
+      const filePath = await fileStorage.saveFile(blob, fileName)
       await db.files.add({
         externalId: uuidv4(),
         fkId: locationExternalId,
@@ -272,7 +272,7 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
       const filesToUpload = pendingFiles.filter(f => f.id === -1)
       for (const fileRecord of filesToUpload) {
         try {
-          const blob = await photoStorage.readPhotoAsBlob(fileRecord.filePath)
+          const blob = await fileStorage.readFileAsBlob(fileRecord.filePath)
           const formData = new FormData()
           const uploadBlob = new Blob([blob], { type: fileRecord.mimeType || 'image/jpeg' })
           formData.append('file', uploadBlob, fileRecord.fileName)
@@ -296,7 +296,7 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
       const files = await db.files.where('fkId').equals(locationExternalId).toArray()
       const photos = []
       for (const file of files) {
-        const url = await photoStorage.getPhotoUrl(file.filePath)
+        const url = await fileStorage.getFileUrl(file.filePath)
         photos.push({ ...file, url, isLocal: true })
       }
       return photos
@@ -317,7 +317,7 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
       try {
         const files = await db.files.where('fkId').equals(externalId).toArray()
         for (const file of files) {
-          await photoStorage.deletePhoto(file.filePath)
+          await fileStorage.deleteFile(file.filePath)
         }
         await db.files.where('fkId').equals(externalId).delete()
         await db.customLocations.where('externalId').equals(externalId).delete()
