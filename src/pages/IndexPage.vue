@@ -138,13 +138,50 @@
               </div>
             </div>
           </div>
+          <div
+            v-if="sizeEstimate && offlineForm.layers.length > 0"
+            class="q-mx-md q-mt-md q-pa-sm rounded-borders"
+            :class="tileCountWarning === 'over-limit'
+              ? 'bg-red-1'
+              : tileCountWarning === 'near-limit'
+                ? 'bg-orange-1'
+                : 'bg-grey-2'"
+          >
+            <div class="text-subtitle2 q-mb-xs">{{ $t('estimatedDownloadSize') }}</div>
+            <div class="row justify-between">
+              <span>{{ $t('totalTiles') }}</span>
+              <strong>{{ sizeEstimate.total.tiles.toLocaleString() }}</strong>
+            </div>
+            <div class="row justify-between">
+              <span>{{ $t('estimatedSize') }}</span>
+              <strong>{{ formatBytes(sizeEstimate.total.bytes) }}</strong>
+            </div>
+            <q-separator class="q-my-xs" />
+            <div
+              v-for="row in sizeEstimate.perLayer"
+              :key="row.layer"
+              class="row justify-between text-caption"
+            >
+              <span>{{ layerLabel(row.layer) }}</span>
+              <span>{{ row.tiles.toLocaleString() }} · {{ formatBytes(row.bytes) }}</span>
+            </div>
+            <div v-if="tileCountWarning === 'over-limit'" class="text-negative text-caption q-mt-xs">
+              {{ $t('estimateOverLimit', { max: MAX_TILE_COUNT.toLocaleString() }) }}
+            </div>
+            <div v-else-if="tileCountWarning === 'near-limit'" class="text-warning text-caption q-mt-xs">
+              {{ $t('estimateNearLimit') }}
+            </div>
+            <div class="text-caption text-grey-7 q-mt-xs">
+              {{ $t('estimateDisclaimer') }}
+            </div>
+          </div>
           <q-card-actions align="center" class="q-mt-md">
             <q-btn
               type="submit"
               color="primary"
               :label="$t('download')"
               :loading="isRequestingOffline"
-              :disable="offlineForm.layers.length === 0"
+              :disable="offlineForm.layers.length === 0 || tileCountWarning === 'over-limit'"
             />
             <q-btn :label="$t('cancel')" color="primary" flat class="q-ml-sm" @click="showOfflineMapDialog = false" />
           </q-card-actions>
@@ -170,8 +207,19 @@ import AddLocation from 'src/components/custom-locations/AddLocation.vue'
 import { useLocationStore } from 'stores/location-store'
 import { useMapStore } from 'stores/map-store'
 import { useOfflineMapsStore } from 'stores/offline-maps-store'
+import {
+  estimatePackage,
+  formatBytes,
+  MAX_TILE_COUNT
+} from 'src/utils/offline-maps-estimator'
 
 export const MIN_CREATE_OFFLINE_ZOOM = 14
+
+const LAYER_LABEL_KEY = {
+  VectorBasemap: 'vectorBasemapLayer',
+  LidarSkyView: 'lidarMapLayer',
+  Ortho: 'orthoMapLayer'
+}
 
 export default defineComponent({
   name: 'IndexPage',
@@ -213,7 +261,9 @@ export default defineComponent({
       showOfflineMapDialog,
       isRequestingOffline,
       offlineForm,
-      layerChooserOpen
+      layerChooserOpen,
+      formatBytes,
+      MAX_TILE_COUNT
     }
   },
   data () {
@@ -252,6 +302,27 @@ export default defineComponent({
     },
     canCreateOfflineMap () {
       return (this.currentZoom || 0) >= MIN_CREATE_OFFLINE_ZOOM
+    },
+    sizeEstimate () {
+      const extent = this.mapStore.getExtent
+      if (!extent || extent.length !== 4) return null
+      const [minLon, minLat] = toLonLat([extent[0], extent[1]])
+      const [maxLon, maxLat] = toLonLat([extent[2], extent[3]])
+      return estimatePackage({
+        minLon,
+        minLat,
+        maxLon,
+        maxLat,
+        minZoom: this.offlineForm.minZoom,
+        maxZoom: this.offlineForm.maxZoom,
+        layers: this.offlineForm.layers
+      })
+    },
+    tileCountWarning () {
+      const tiles = this.sizeEstimate?.total.tiles ?? 0
+      if (tiles > MAX_TILE_COUNT) return 'over-limit'
+      if (tiles > MAX_TILE_COUNT * 0.8) return 'near-limit'
+      return null
     }
   },
   methods: {
@@ -308,6 +379,10 @@ export default defineComponent({
         return
       }
       this.showOfflineMapDialog = true
+    },
+    layerLabel (layerType) {
+      const key = LAYER_LABEL_KEY[layerType]
+      return key ? this.$t(key) : layerType
     },
     async submitOfflineMapRequest () {
       if (!this.canCreateOfflineMap) {

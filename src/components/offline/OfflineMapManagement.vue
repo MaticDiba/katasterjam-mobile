@@ -76,6 +76,18 @@
                               :loading="isDownloading(pkg.id, layer.layerType)"
                               @click="downloadLayer(pkg.id, layer.layerType)"
                             />
+                            <q-btn
+                              v-if="isDownloading(pkg.id, layer.layerType)"
+                              flat
+                              dense
+                              size="sm"
+                              color="grey-7"
+                              icon="close"
+                              :aria-label="$t('cancelDownload')"
+                              @click="cancelDownload(pkg.id, layer.layerType)"
+                            >
+                              <q-tooltip>{{ $t('cancelDownload') }}</q-tooltip>
+                            </q-btn>
                           </template>
                         </template>
                         <template v-else>
@@ -92,6 +104,12 @@
                         class="q-mt-xs"
                         style="height: 4px"
                       />
+                      <div
+                        v-if="isDownloading(pkg.id, layer.layerType) && retryAttempt(pkg.id, layer.layerType) > 1"
+                        class="text-caption text-orange q-mt-xs"
+                      >
+                        {{ $t('downloadAttempt', { attempt: retryAttempt(pkg.id, layer.layerType), total: retryTotal(pkg.id, layer.layerType) }) }}
+                      </div>
                     </div>
                   </div>
 
@@ -211,6 +229,18 @@
                           :loading="isDownloading(pkg.id, layer.layerType)"
                           @click="downloadLayer(pkg.id, layer.layerType)"
                         />
+                        <q-btn
+                          v-if="isDownloading(pkg.id, layer.layerType)"
+                          flat
+                          dense
+                          size="sm"
+                          color="grey-7"
+                          icon="close"
+                          :aria-label="$t('cancelDownload')"
+                          @click="cancelDownload(pkg.id, layer.layerType)"
+                        >
+                          <q-tooltip>{{ $t('cancelDownload') }}</q-tooltip>
+                        </q-btn>
                       </template>
                     </div>
                     <q-linear-progress
@@ -220,6 +250,12 @@
                       class="q-mt-xs"
                       style="height: 4px"
                     />
+                    <div
+                      v-if="isDownloading(pkg.id, layer.layerType) && retryAttempt(pkg.id, layer.layerType) > 1"
+                      class="text-caption text-orange q-mt-xs"
+                    >
+                      {{ $t('downloadAttempt', { attempt: retryAttempt(pkg.id, layer.layerType), total: retryTotal(pkg.id, layer.layerType) }) }}
+                    </div>
                   </div>
                 </div>
               </q-item-section>
@@ -344,6 +380,18 @@ export default {
       return this.offlineMapsStore.downloadProgress[sourceKey(packageId, layerType)] || 0
     },
 
+    retryAttempt (packageId, layerType) {
+      return this.offlineMapsStore.downloadAttempt[sourceKey(packageId, layerType)]?.attempt || 1
+    },
+
+    retryTotal (packageId, layerType) {
+      return this.offlineMapsStore.downloadAttempt[sourceKey(packageId, layerType)]?.total || 1
+    },
+
+    cancelDownload (packageId, layerType) {
+      this.offlineMapsStore.cancelDownload(packageId, layerType)
+    },
+
     async loadMyPackages () {
       this.isLoadingPackages = true
       try {
@@ -387,11 +435,17 @@ export default {
         await this.offlineMapsStore.downloadLayerFile(packageId, layerType)
         this.$q.notify({ type: 'positive', message: `${this.offlineLayerLabel(layerType)} ${this.$t('downloadedMessage')}` })
       } catch (error) {
+        if (error?.name === 'AbortError') {
+          this.$q.notify({ type: 'info', message: this.$t('downloadCancelled') })
+          return
+        }
         let message
         if (error?.message === OFFLINE_VECTOR_STYLE_MISSING) {
           message = this.$t('offlineVectorStyleMissing')
         } else if (error?.message === OFFLINE_MAPS_REQUIRE_NATIVE) {
           message = this.$t('offlineMapsRequireNative')
+        } else if (error?.name === 'IdleTimeoutError') {
+          message = this.$t('downloadStalled')
         } else {
           message = `${this.$t('downloadFailed')}: ${error?.message || error}`
         }
