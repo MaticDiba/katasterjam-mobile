@@ -77,6 +77,43 @@
     <q-card-section>
       <div class="q-ml-sm" v-html="excursion.description"></div>
     </q-card-section>
+
+    <q-separator />
+    <q-card-section>
+      <div class="row items-center q-mb-sm">
+        <div class="text-subtitle2">{{ $t('gpxTracks') }}</div>
+        <q-space />
+        <q-btn
+          size="sm"
+          color="primary"
+          icon="upload_file"
+          :label="$t('importGpx')"
+          @click="importGpxForExcursion"
+        />
+      </div>
+      <q-list v-if="gpxTracks.length" dense>
+        <q-item v-for="track in gpxTracks" :key="track.externalId">
+          <q-item-section>
+            <q-item-label>{{ track.name }}</q-item-label>
+            <q-item-label caption>
+              {{ formatDistance(track.stats?.distanceMeters || 0) }} ·
+              {{ track.stats?.pointCount || 0 }} {{ $t('gpxPoints').toLowerCase() }}
+            </q-item-label>
+          </q-item-section>
+          <q-item-section side>
+            <q-btn
+              flat
+              round
+              dense
+              icon="map"
+              color="green"
+              @click="showTrackOnMap(track)"
+            />
+          </q-item-section>
+        </q-item>
+      </q-list>
+      <div v-else class="text-caption text-grey">{{ $t('gpxListEmpty') }}</div>
+    </q-card-section>
   </q-card>
 </template>
 <script>
@@ -85,17 +122,25 @@ import { ref } from 'vue'
 import { formatDate } from 'src/helpers/date'
 import { api } from 'src/boot/api'
 import OrganizationsList from 'src/components/organizations/OrganizationsList.vue'
+import { useLocalGpxStore } from 'stores/local-gpx-store'
+import { formatDistance } from 'src/helpers/gpx-file'
+
 export default {
   name: 'ExcursionDetailsPage',
   components: { OrganizationsList },
   setup () {
     const { dialog } = useQuasar()
     const excursion = ref(null)
+    const gpxTracks = ref([])
+    const gpxStore = useLocalGpxStore()
 
     return {
       confirmDialog: dialog,
       formatDate,
-      excursion
+      formatDistance,
+      excursion,
+      gpxTracks,
+      gpxStore
     }
   },
   computed: {
@@ -109,6 +154,31 @@ export default {
   methods: {
     showOnMap () {
       console.log('todo')
+    },
+    async loadGpxTracks () {
+      if (!this.excursion) return
+      const key = this.excursion.id && this.excursion.id !== -1
+        ? this.excursion.id
+        : this.excursion.externalId
+      this.gpxTracks = await this.gpxStore.getForExcursion(key)
+    },
+    importGpxForExcursion () {
+      const excursionId = this.excursion.id && this.excursion.id !== -1
+        ? this.excursion.id
+        : this.excursion.externalId
+      this.$router.push({
+        name: 'gpx-import',
+        query: { excursionId: String(excursionId) }
+      })
+    },
+    async showTrackOnMap (track) {
+      await this.gpxStore.addToMap(track.externalId)
+      const parsed = await this.gpxStore.loadParsed(track.externalId)
+      const extent = parsed?.extent
+      this.$router.push({
+        path: '/',
+        query: extent ? { extent: extent.join(',') } : {}
+      })
     },
     async toggleFavourite () {
       if (this.excursion.isFavourite) {
@@ -149,8 +219,9 @@ export default {
       })
     }
   },
-  created () {
+  async created () {
     this.excursion = this.$route.meta.excursion
+    await this.loadGpxTracks()
   }
 }
 </script>

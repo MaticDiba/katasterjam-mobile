@@ -119,7 +119,7 @@ import { getDBDateNow } from 'src/helpers/date'
 import { useLocationStore } from 'stores/location-store'
 import { useLocalExcursionsStore } from 'stores/local-excursion-store'
 import { useLocalCustomLocationStore } from 'stores/local-custom-location-store'
-import * as photoStorage from 'src/helpers/photo-storage'
+import * as fileStorage from 'src/helpers/file-storage'
 export default {
   setup () {
     const locationStore = useLocationStore()
@@ -271,7 +271,7 @@ export default {
     async addPhotoFromUri (fileUri) {
       try {
         const fileName = fileUri.split('/').pop() || `photo-${Date.now()}.jpg`
-        const blob = await photoStorage.readPhotoAsBlob(fileUri)
+        const blob = await fileStorage.readFileAsBlob(fileUri)
         const previewUrl = URL.createObjectURL(blob)
         this.photos.push({
           blob,

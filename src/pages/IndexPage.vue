@@ -20,6 +20,7 @@
         :view="view"
         @centerChanged="centerChanged"/>
       <CustomLocationLayers v-if="mapStore.getCustomLocationsVisible"/>
+      <GpxLayers/>
       <ol-vector-layer>
         <ol-source-vector :features="markLocations">
         </ol-source-vector>
@@ -162,6 +163,7 @@ import PageFullScreen from 'layouts/PageFullScreen.vue'
 import CartoLayers from 'src/components/map/layers/CartoLayers.vue'
 import LocationLayers from 'src/components/map/layers/LocationLayers.vue'
 import CustomLocationLayers from 'src/components/map/layers/CustomLocationLayers.vue'
+import GpxLayers from 'src/components/map/layers/GpxLayers.vue'
 import LayerChooserSheet from 'src/components/map/layers/LayerChooserSheet.vue'
 import DetailsDrawer from 'src/components/map/drawer/DetailsDrawer.vue'
 import AddLocation from 'src/components/custom-locations/AddLocation.vue'
@@ -173,7 +175,7 @@ export const MIN_CREATE_OFFLINE_ZOOM = 14
 
 export default defineComponent({
   name: 'IndexPage',
-  components: { PageFullScreen, CartoLayers, LocationLayers, CustomLocationLayers, LayerChooserSheet, DetailsDrawer, AddLocation },
+  components: { PageFullScreen, CartoLayers, LocationLayers, CustomLocationLayers, GpxLayers, LayerChooserSheet, DetailsDrawer, AddLocation },
   setup () {
     const locationStore = useLocationStore()
     const mapStore = useMapStore()
@@ -226,12 +228,16 @@ export default defineComponent({
     if (this.$route.query.customLocation) {
       this.mapStore.setCustomLocationsVisible(true)
     }
+    const pendingGpxExtent = this.$route.query.extent
+      ? this.$route.query.extent.split(',').map(Number).filter(n => !Number.isNaN(n))
+      : null
 
     return {
       currentCenter: this.center,
       currentZoom: this.zoom,
       currentResolution: this.resolution,
-      fixedCenter: false
+      fixedCenter: false,
+      pendingGpxExtent: pendingGpxExtent && pendingGpxExtent.length === 4 ? pendingGpxExtent : null
     }
   },
   computed: {
@@ -341,6 +347,10 @@ export default defineComponent({
       this.locationStore.initialize(newVal.getProjection())
       if (this.goTo) {
         this.locationStore.startNavigation(this.goTo)
+      }
+      if (this.pendingGpxExtent) {
+        newVal.fit(this.pendingGpxExtent, { padding: [60, 60, 60, 60], duration: 500 })
+        this.pendingGpxExtent = null
       }
     }
   },

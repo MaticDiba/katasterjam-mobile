@@ -80,7 +80,9 @@ const routes = [
       { path: '/custom-locations/details/:id', name: 'custom-locations-details', component: () => import('src/pages/CustomLocationDetailsPage.vue'), beforeEnter: customLocationResolver },
       { path: '/offline-data', name: 'offline-data-list', component: () => import('pages/OfflineDataList.vue') },
       { path: '/offline-data/:id', name: 'offline-data-page', component: () => import('pages/OfflineDataPage.vue'), beforeEnter: offlineRecordResolver },
-      { path: '/offline-maps', name: 'offline-maps', component: () => import('pages/OfflineMapsPage.vue') }
+      { path: '/offline-maps', name: 'offline-maps', component: () => import('pages/OfflineMapsPage.vue') },
+      { path: '/gpx', name: 'gpx-list', component: () => import('pages/GpxListPage.vue') },
+      { path: '/gpx/import', name: 'gpx-import', component: () => import('pages/GpxImportPage.vue') }
     ]
   },
 

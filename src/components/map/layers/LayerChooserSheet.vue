@@ -48,6 +48,43 @@
             </q-item-section>
           </q-item>
 
+          <q-item v-if="gpxStore.getAddedTracks.length" clickable @click="toggleAllGpx">
+            <q-item-section avatar>
+              <q-avatar rounded size="44px" color="blue-1" text-color="blue">
+                <q-icon name="route" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ $t('gpxTracks') }}</q-item-label>
+              <q-item-label caption>{{ gpxSummary }}</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-toggle
+                :model-value="anyGpxVisible"
+                color="teal"
+                @click.stop="toggleAllGpx"
+              />
+            </q-item-section>
+          </q-item>
+          <q-item
+            v-for="track in gpxStore.getAddedTracks"
+            :key="track.externalId"
+            clickable
+            class="q-pl-xl"
+            @click="gpxStore.toggleVisible(track.externalId)"
+          >
+            <q-item-section>
+              <q-item-label>{{ track.name }}</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-toggle
+                :model-value="gpxStore.isVisible(track.externalId)"
+                color="teal"
+                @click.stop="gpxStore.toggleVisible(track.externalId)"
+              />
+            </q-item-section>
+          </q-item>
+
           <q-separator class="q-my-sm" />
 
           <q-item-label header>{{ $t('offlineLayersSection') }}</q-item-label>
@@ -105,6 +142,7 @@ import { ref } from 'vue'
 import { liveQuery } from 'dexie'
 import { useMapStore } from 'stores/map-store'
 import { useOfflineMapsStore, sourceKey } from 'stores/offline-maps-store'
+import { useLocalGpxStore } from 'stores/local-gpx-store'
 import { db } from 'src/db/db'
 import { OFFLINE_VECTOR_STYLE_MISSING } from 'src/utils/vector-mbtiles-source'
 import { OFFLINE_MAPS_REQUIRE_NATIVE } from 'src/services/offline-maps-service'
@@ -144,12 +182,21 @@ export default {
   setup () {
     const mapStore = useMapStore()
     const offlineMapsStore = useOfflineMapsStore()
+    const gpxStore = useLocalGpxStore()
     const downloadedKeys = ref(new Set())
 
-    return { mapStore, offlineMapsStore, downloadedKeys }
+    return { mapStore, offlineMapsStore, gpxStore, downloadedKeys }
   },
 
   computed: {
+    anyGpxVisible () {
+      return this.gpxStore.getVisibleIds.length > 0
+    },
+    gpxSummary () {
+      const added = this.gpxStore.getAddedTracks.length
+      const visible = this.gpxStore.getVisibleIds.length
+      return `${visible}/${added}`
+    },
     offlineGroups () {
       const groups = []
       for (const pkg of this.offlineMapsStore.myTiles) {
@@ -218,6 +265,10 @@ export default {
       this.mapStore.setCustomLocationsVisible(!this.mapStore.getCustomLocationsVisible)
     },
 
+    toggleAllGpx () {
+      this.gpxStore.setAllVisible(!this.anyGpxVisible)
+    },
+
     async selectOfflineLayer (packageId, layerType) {
       const key = sourceKey(packageId, layerType)
       const active = this.offlineMapsStore.activeSources[key]
@@ -266,6 +317,7 @@ export default {
     })
 
     this.offlineMapsStore.loadMyTiles().catch(() => {})
+    this.gpxStore.refresh().catch(() => {})
   },
 
   beforeUnmount () {

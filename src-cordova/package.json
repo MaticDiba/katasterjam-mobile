@@ -13,6 +13,7 @@
   "author": "Apache Cordova Team",
   "license": "Apache-2.0",
   "devDependencies": {
+    "com-darryncampbell-cordova-plugin-intent": "^2.2.0",
     "cordova-android": "^11.0.0",
     "cordova-background-geolocation-plugin": "^2.3.3",
     "cordova-ios": "^8.0.1",
@@ -20,6 +21,7 @@
     "cordova-plugin-device-orientation": "^3.0.0",
     "cordova-plugin-file": "^7.0.0",
     "cordova-plugin-geolocation": "^4.1.0",
+    "cordova-plugin-saf-mediastore": "^1.0.10",
     "cordova-sqlite-storage": "^7.0.0"
   },
   "cordova": {
@@ -36,6 +38,8 @@
       "cordova-plugin-file": {
         "ANDROIDX_WEBKIT_VERSION": "1.4.0"
       },
+      "com-darryncampbell-cordova-plugin-intent": {},
+      "cordova-plugin-saf-mediastore": {},
       "cordova-background-geolocation-plugin": {
         "GOOGLE_PLAY_SERVICES_VERSION": "11+",
         "ICON": "@mipmap/ic_launcher",
