@@ -18,6 +18,10 @@ export const sourceKey = (packageId, layerType) => `${packageId}_${layerType}`
 const SOURCE_OWN = 'own'
 const SOURCE_LIBRARY = 'library'
 
+// In-flight downloads keyed by sourceKey: { controller, promise }. Kept
+// outside Pinia state so Vue reactivity does not wrap non-plain objects.
+const inFlightDownloads = new Map()
+
 function toDexieRow (pkg, source) {
   return JSON.parse(JSON.stringify({
     id: pkg.id,
@@ -44,6 +48,7 @@ export const useOfflineMapsStore = defineStore('offline-maps', {
     myTiles: [],
     registryPackages: [],
     downloadProgress: {},
+    downloadAttempt: {},
     activeSources: {},
     localLayersLoaded: false,
     myTilesLoaded: false,
@@ -164,16 +169,51 @@ export const useOfflineMapsStore = defineStore('offline-maps', {
         await db.offlineMaps.delete(existingRecord.id)
       }
 
+      const inFlight = inFlightDownloads.get(key)
+      if (inFlight) return inFlight.promise
+
+      const controller = new AbortController()
       this.downloadProgress[key] = 0
-      const filePath = await downloadLayer(packageId, layerType, (progress) => {
-        this.downloadProgress[key] = progress
-      })
-      this.downloadProgress[key] = 1
+      this.downloadAttempt[key] = { attempt: 1, total: 5 }
 
-      await db.offlineMaps.add({ packageId, layerType, filePath, enabled: false })
-      await this._ensurePackageInMyTiles(packageId)
+      const promise = (async () => {
+        try {
+          const filePath = await downloadLayer(packageId, layerType, {
+            onProgress: (progress) => {
+              this.downloadProgress[key] = progress
+            },
+            onAttempt: (attempt, total) => {
+              this.downloadAttempt[key] = { attempt, total }
+            },
+            signal: controller.signal
+          })
+          this.downloadProgress[key] = 1
+          delete this.downloadAttempt[key]
 
-      return filePath
+          await db.offlineMaps.add({ packageId, layerType, filePath, enabled: false })
+          await this._ensurePackageInMyTiles(packageId)
+
+          return filePath
+        } catch (err) {
+          delete this.downloadProgress[key]
+          delete this.downloadAttempt[key]
+          throw err
+        } finally {
+          inFlightDownloads.delete(key)
+        }
+      })()
+
+      inFlightDownloads.set(key, { controller, promise })
+      return promise
+    },
+
+    cancelDownload (packageId, layerType) {
+      const key = sourceKey(packageId, layerType)
+      inFlightDownloads.get(key)?.controller.abort()
+    },
+
+    isDownloadActive (packageId, layerType) {
+      return inFlightDownloads.has(sourceKey(packageId, layerType))
     },
 
     async downloadAndActivateLayer (packageId, layerType) {
