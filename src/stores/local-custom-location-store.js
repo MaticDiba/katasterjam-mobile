@@ -98,14 +98,16 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
     },
     async savePhotoLocally (locationExternalId, blob, fileName, mimeType) {
       const filePath = await fileStorage.saveFile(blob, fileName)
+      const externalId = uuidv4()
       await db.files.add({
-        externalId: uuidv4(),
+        externalId,
         fkId: locationExternalId,
         id: -1,
         filePath,
         fileName,
         mimeType
       })
+      return externalId
     },
     async tryFetchCustomLocationsForOffline () {
       this.searchParameters.lastUpdated = localStorage.getItem('lastImportCustomLocations')
