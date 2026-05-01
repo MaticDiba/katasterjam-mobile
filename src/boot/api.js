@@ -119,11 +119,14 @@ class FetchClient {
   }
 
   async getTileImage (tile, tileUrl, useAuth = false) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 5000)
     try {
       const headers = useAuth ? {} : { Authorization: null }
       const response = await this.get(tileUrl, {
         responseType: 'arraybuffer',
-        headers
+        headers,
+        signal: controller.signal
       })
       const blob = new Blob([response.data], { type: 'image/png' })
       const blobUrl = URL.createObjectURL(blob)
@@ -134,6 +137,8 @@ class FetchClient {
       img.src = blobUrl
     } catch (error) {
       tile.setState(TileState.ERROR)
+    } finally {
+      clearTimeout(timer)
     }
   }
 }
