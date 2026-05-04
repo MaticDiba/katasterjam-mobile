@@ -11,6 +11,7 @@ import { useLocationStore } from 'stores/location-store'
 import { useLocalCustomLocationStore } from 'stores/local-custom-location-store'
 import { useLocalGpxStore } from 'stores/local-gpx-store'
 import { useLocalTracksStore } from 'stores/local-tracks-store'
+import { useLocalExcursionsStore } from 'stores/local-excursion-store'
 import { initNetworkStatus, onOnline, isOnline } from 'src/helpers/network'
 
 proj4.defs('EPSG:3912', '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=bessel +towgs84=426.9,142.6,460.1,4.91,4.49,-12.42,17.1 +units=m +no_defs')
@@ -27,6 +28,7 @@ export default defineComponent({
     const localCustomLocationStore = useLocalCustomLocationStore()
     const localGpxStore = useLocalGpxStore()
     const localTracksStore = useLocalTracksStore()
+    const localExcursionsStore = useLocalExcursionsStore()
 
     // One-time backfill: clear the incremental-sync timestamps so the next
     // fetch returns the full server set. Bump the key version to force again.
@@ -38,22 +40,29 @@ export default defineComponent({
     }
 
     initNetworkStatus()
-    onOnline(async () => {
-      if (store.isAuthenticated) {
-        await localCustomLocationStore.sync()
-        await localGpxStore.sync()
-        await localTracksStore.sync()
-      }
+    const runReconcile = () => {
+      Promise.allSettled([
+        localCustomLocationStore.tryFetchCustomLocationsForOffline(),
+        localExcursionsStore.tryFetchExcursionsForOffline(),
+        localCustomLocationStore.sync(),
+        localGpxStore.sync(),
+        localTracksStore.sync()
+      ]).then(results => {
+        results.forEach(r => {
+          if (r.status === 'rejected') console.error('reconcile failed', r.reason)
+        })
+      })
+    }
+    onOnline(() => {
+      if (store.initialized && store.isAuthenticated) runReconcile()
     })
     let startupSyncDone = false
     watch(
-      () => store.isAuthenticated && isOnline.value,
+      () => store.initialized && store.isAuthenticated && isOnline.value,
       (ready) => {
         if (ready && !startupSyncDone) {
           startupSyncDone = true
-          localCustomLocationStore.sync().catch(e => console.error('startup sync failed (custom locations)', e))
-          localGpxStore.sync().catch(e => console.error('startup sync failed (gpx)', e))
-          localTracksStore.sync().catch(e => console.error('startup sync failed (tracks)', e))
+          runReconcile()
         }
       },
       { immediate: true }

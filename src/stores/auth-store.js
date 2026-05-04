@@ -5,7 +5,8 @@ import { api } from 'src/boot/api'
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: JSON.parse(localStorage.getItem('user')),
-    token: JSON.parse(localStorage.getItem('token'))
+    token: JSON.parse(localStorage.getItem('token')),
+    initialized: false
   }),
   getters: {
     getUser: (state) => state.user,
@@ -96,6 +97,8 @@ export const useAuthStore = defineStore('auth', {
       if (!isTokenValid) {
         this.clearData()
       }
+
+      this.initialized = true
     },
     async validateToken () {
       const { exp } = jwtDecode(this.token?.accessToken)
