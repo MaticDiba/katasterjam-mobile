@@ -4,6 +4,7 @@ import { api } from 'src/boot/api'
 import { db } from 'src/db/db'
 import { saveFile, readFileAsBlob, deleteFile } from 'src/helpers/file-storage'
 import { parseGpx, readFileAsText } from 'src/helpers/gpx-file'
+import { resolveExcursionId } from 'src/helpers/excursion-resolver'
 import { useAuthStore } from 'src/stores/auth-store'
 
 const GPX_DOCUMENT_TYPE_ID = 25
@@ -13,20 +14,6 @@ let syncPromise = null
 
 function sanitizeFileName (name) {
   return (name || 'track.gpx').replace(/[^A-Za-z0-9._-]+/g, '_')
-}
-
-async function resolveExcursionId (fkExcursionId) {
-  if (fkExcursionId == null || fkExcursionId === '') return { linked: false, id: null }
-  if (typeof fkExcursionId === 'number') return { linked: true, id: fkExcursionId }
-  const asNum = Number(fkExcursionId)
-  if (!Number.isNaN(asNum) && String(asNum) === String(fkExcursionId)) {
-    return { linked: true, id: asNum }
-  }
-  const excursion = await db.excursions.where('externalId').equals(fkExcursionId).first()
-  if (excursion && excursion.id && excursion.id !== -1) {
-    return { linked: true, id: excursion.id }
-  }
-  return { linked: true, id: null }
 }
 
 function normalizeTrack (track) {
