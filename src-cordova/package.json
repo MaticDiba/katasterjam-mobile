@@ -14,8 +14,8 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "com-darryncampbell-cordova-plugin-intent": "^2.2.0",
-    "cordova-android": "^11.0.0",
-    "cordova-background-geolocation-plugin": "^2.3.3",
+    "cordova-android": "^13.0.0",
+    "cordova-background-geolocation-katasterjam": "file:local-plugins/cordova-background-geolocation-katasterjam",
     "cordova-ios": "^8.0.1",
     "cordova-plugin-camera": "^7.0.0",
     "cordova-plugin-device-orientation": "^3.0.0",
@@ -26,8 +26,8 @@
   },
   "cordova": {
     "platforms": [
-      "android",
-      "ios"
+      "ios",
+      "android"
     ],
     "plugins": {
       "cordova-plugin-device-orientation": {},
@@ -40,7 +40,8 @@
       },
       "com-darryncampbell-cordova-plugin-intent": {},
       "cordova-plugin-saf-mediastore": {},
-      "cordova-background-geolocation-plugin": {
+      "cordova-sqlite-storage": {},
+      "cordova-background-geolocation-katasterjam": {
         "GOOGLE_PLAY_SERVICES_VERSION": "11+",
         "ICON": "@mipmap/ic_launcher",
         "SMALL_ICON": "@mipmap/ic_launcher",
@@ -48,8 +49,7 @@
         "ACCOUNT_LABEL": "@string/app_name",
         "ACCOUNT_TYPE": "$PACKAGE_NAME.account",
         "CONTENT_AUTHORITY": "$PACKAGE_NAME"
-      },
-      "cordova-sqlite-storage": {}
+      }
     }
   }
 }
