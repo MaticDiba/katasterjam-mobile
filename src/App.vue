@@ -3,7 +3,7 @@
 </template>
 
 <script>
-import { defineComponent } from 'vue'
+import { defineComponent, watch } from 'vue'
 import proj4 from 'proj4'
 import { register } from 'ol/proj/proj4'
 import { useAuthStore } from 'stores/auth-store'
@@ -11,7 +11,7 @@ import { useLocationStore } from 'stores/location-store'
 import { useLocalCustomLocationStore } from 'stores/local-custom-location-store'
 import { useLocalGpxStore } from 'stores/local-gpx-store'
 import { useLocalTracksStore } from 'stores/local-tracks-store'
-import { initNetworkStatus, onOnline } from 'src/helpers/network'
+import { initNetworkStatus, onOnline, isOnline } from 'src/helpers/network'
 
 proj4.defs('EPSG:3912', '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=bessel +towgs84=426.9,142.6,460.1,4.91,4.49,-12.42,17.1 +units=m +no_defs')
 proj4.defs('EPSG:102060', '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=bessel +towgs84=426.62,142.62,460.09,4.98,4.49,-12.42,-17.1 +units=m +no_defs +type=crs')
@@ -28,6 +28,15 @@ export default defineComponent({
     const localGpxStore = useLocalGpxStore()
     const localTracksStore = useLocalTracksStore()
 
+    // One-time backfill: clear the incremental-sync timestamps so the next
+    // fetch returns the full server set. Bump the key version to force again.
+    const SYNC_MIGRATION_KEY = 'syncTimestampMigration_v1_done'
+    if (!localStorage.getItem(SYNC_MIGRATION_KEY)) {
+      localStorage.removeItem('lastImportCustomLocations')
+      localStorage.removeItem('lastImportExcursions')
+      localStorage.setItem(SYNC_MIGRATION_KEY, '1')
+    }
+
     initNetworkStatus()
     onOnline(async () => {
       if (store.isAuthenticated) {
@@ -36,6 +45,19 @@ export default defineComponent({
         await localTracksStore.sync()
       }
     })
+    let startupSyncDone = false
+    watch(
+      () => store.isAuthenticated && isOnline.value,
+      (ready) => {
+        if (ready && !startupSyncDone) {
+          startupSyncDone = true
+          localCustomLocationStore.sync().catch(e => console.error('startup sync failed (custom locations)', e))
+          localGpxStore.sync().catch(e => console.error('startup sync failed (gpx)', e))
+          localTracksStore.sync().catch(e => console.error('startup sync failed (tracks)', e))
+        }
+      },
+      { immediate: true }
+    )
 
     document.addEventListener('pause', (ev) => {
       const locationStore = useLocationStore()
