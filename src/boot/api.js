@@ -120,7 +120,7 @@ class FetchClient {
 
   async getTileImage (tile, tileUrl, useAuth = false) {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 5000)
+    const timer = setTimeout(() => controller.abort(), 15000)
     try {
       const headers = useAuth ? {} : { Authorization: null }
       const response = await this.get(tileUrl, {

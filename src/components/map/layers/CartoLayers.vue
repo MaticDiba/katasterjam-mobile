@@ -143,7 +143,6 @@ export default {
         newLayer = new VectorTileLayer({
           source: active.source,
           visible: active.visible !== false,
-          zIndex: 10,
           properties: layerProps
         })
 
@@ -171,7 +170,6 @@ export default {
         newLayer = new TileLayer({
           source: active.source,
           visible: active.visible !== false,
-          zIndex: 10,
           properties: layerProps
         })
       }
@@ -242,9 +240,6 @@ export default {
       const transformRequest = (url, type) => {
         if (type === 'Tiles') {
           url = url.replace(/\/tile\//, '/VectorTileServer/tile/')
-          const tileController = new AbortController()
-          setTimeout(() => tileController.abort(), 4000)
-          return new Request(url, { signal: tileController.signal })
         }
         return new Request(url)
       }
@@ -254,13 +249,13 @@ export default {
 
         const basemapStyleResp = await fetchWithTimeout(
           'https://cdn.arcgis.com/sharing/rest/content/items/165d7a1e43164d828064eb2027e219d5/resources/styles/root.json?f=json',
-          6000
+          15000
         )
         await applyStyle(basemapLayer, await basemapStyleResp.json(), { transformRequest })
 
         const contoursStyleResp = await fetchWithTimeout(
           'https://cdn.arcgis.com/sharing/rest/content/items/51ca3ce6a16d4080ad955dacd6dd2fe2/resources/styles/root.json?f=json',
-          6000
+          15000
         )
         await applyStyle(contoursLayer, await contoursStyleResp.json(), { transformRequest })
       } catch (e) {
