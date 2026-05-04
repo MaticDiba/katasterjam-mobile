@@ -11,7 +11,7 @@ export function getDateTime () {
   return moment(new Date()).format('DD. MM. YYYY HH:mm:ss')
 }
 export function getLongDateNow () {
-  return moment(new Date()).format('YYYY-MM-DD HH:mm:ss')
+  return new Date().toISOString()
 }
 export function getDBDateNow () {
   return moment(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')

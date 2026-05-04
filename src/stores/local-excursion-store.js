@@ -87,10 +87,10 @@ export const useLocalExcursionsStore = defineStore('local-excursions', {
             await this.search()
           }
         }
-      } catch (error) {
-        console.error('Error occurred while searching for new custom locations')
-      } finally {
+
         localStorage.setItem('lastImportExcursions', dateNow)
+      } catch (error) {
+        console.error('Error occurred while searching for new excursions')
       }
     },
     async search () {

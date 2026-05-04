@@ -3,7 +3,7 @@
 </template>
 
 <script>
-import { defineComponent } from 'vue'
+import { defineComponent, watch } from 'vue'
 import proj4 from 'proj4'
 import { register } from 'ol/proj/proj4'
 import { useAuthStore } from 'stores/auth-store'
@@ -11,7 +11,8 @@ import { useLocationStore } from 'stores/location-store'
 import { useLocalCustomLocationStore } from 'stores/local-custom-location-store'
 import { useLocalGpxStore } from 'stores/local-gpx-store'
 import { useLocalTracksStore } from 'stores/local-tracks-store'
-import { initNetworkStatus, onOnline } from 'src/helpers/network'
+import { useLocalExcursionsStore } from 'stores/local-excursion-store'
+import { initNetworkStatus, onOnline, isOnline } from 'src/helpers/network'
 
 proj4.defs('EPSG:3912', '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=bessel +towgs84=426.9,142.6,460.1,4.91,4.49,-12.42,17.1 +units=m +no_defs')
 proj4.defs('EPSG:102060', '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=bessel +towgs84=426.62,142.62,460.09,4.98,4.49,-12.42,-17.1 +units=m +no_defs +type=crs')
@@ -27,15 +28,45 @@ export default defineComponent({
     const localCustomLocationStore = useLocalCustomLocationStore()
     const localGpxStore = useLocalGpxStore()
     const localTracksStore = useLocalTracksStore()
+    const localExcursionsStore = useLocalExcursionsStore()
+
+    // One-time backfill: clear the incremental-sync timestamps so the next
+    // fetch returns the full server set. Bump the key version to force again.
+    const SYNC_MIGRATION_KEY = 'syncTimestampMigration_v1_done'
+    if (!localStorage.getItem(SYNC_MIGRATION_KEY)) {
+      localStorage.removeItem('lastImportCustomLocations')
+      localStorage.removeItem('lastImportExcursions')
+      localStorage.setItem(SYNC_MIGRATION_KEY, '1')
+    }
 
     initNetworkStatus()
-    onOnline(async () => {
-      if (store.isAuthenticated) {
-        await localCustomLocationStore.sync()
-        await localGpxStore.sync()
-        await localTracksStore.sync()
-      }
+    const runReconcile = () => {
+      Promise.allSettled([
+        localCustomLocationStore.tryFetchCustomLocationsForOffline(),
+        localExcursionsStore.tryFetchExcursionsForOffline(),
+        localCustomLocationStore.sync(),
+        localGpxStore.sync(),
+        localTracksStore.sync()
+      ]).then(results => {
+        results.forEach(r => {
+          if (r.status === 'rejected') console.error('reconcile failed', r.reason)
+        })
+      })
+    }
+    onOnline(() => {
+      if (store.initialized && store.isAuthenticated) runReconcile()
     })
+    let startupSyncDone = false
+    watch(
+      () => store.initialized && store.isAuthenticated && isOnline.value,
+      (ready) => {
+        if (ready && !startupSyncDone) {
+          startupSyncDone = true
+          runReconcile()
+        }
+      },
+      { immediate: true }
+    )
 
     document.addEventListener('pause', (ev) => {
       const locationStore = useLocationStore()
