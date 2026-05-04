@@ -60,14 +60,12 @@ export default {
       if (!map) return
 
       const basemap = map.getLayers().getArray().find(l => l.get('name') === 'vector-basemap')
-      const contours = map.getLayers().getArray().find(l => l.get('name') === 'vector-contours')
 
       if (online && !basemap) {
         this.initVectorBasemap(map)
-      } else {
-        if (basemap) basemap.setVisible(online)
-        if (contours) contours.setVisible(online)
       }
+
+      this.syncBasemapVisibility(map)
 
       if (!online) {
         for (const [key, active] of Object.entries(this.offlineMapsStore.activeSources)) {
@@ -99,16 +97,21 @@ export default {
           this.removeOfflineLayer(key)
         }
       }
+
+      const map = this.getMap()
+      if (map) this.syncBasemapVisibility(map)
     }
   },
-  async mounted () {
+  mounted () {
     const map = this.getMap()
     if (map) {
-      await this.initVectorBasemap(map)
+      this.initVectorBasemap(map)
     }
-    for (const key of Object.keys(this.offlineMapsStore.activeSources)) {
-      await this.addOfflineLayer(key)
-    }
+    Promise.all(
+      Object.keys(this.offlineMapsStore.activeSources).map(key => this.addOfflineLayer(key))
+    ).then(() => {
+      if (map) this.syncBasemapVisibility(map)
+    })
     this.mapStore.getCavesLayerSource().then(source => {
       this.cavesSource.vectorLayer.setSource(source)
     })
@@ -176,6 +179,8 @@ export default {
       const cavesIdx = cavesLayer ? layers.getArray().indexOf(cavesLayer) : -1
       const insertIdx = cavesIdx >= 0 ? cavesIdx : 0
       layers.insertAt(insertIdx, newLayer)
+
+      this.syncBasemapVisibility(map)
     },
 
     setOfflineLayerVisibility (key, visible) {
@@ -188,6 +193,23 @@ export default {
       if (layer) {
         layer.setVisible(visible !== false)
       }
+
+      this.syncBasemapVisibility(map)
+    },
+
+    hasVisibleOfflineLayer () {
+      for (const active of Object.values(this.offlineMapsStore.activeSources)) {
+        if (active?.visible) return true
+      }
+      return false
+    },
+
+    syncBasemapVisibility (map) {
+      const basemap = map.getLayers().getArray().find(l => l.get('name') === 'vector-basemap')
+      const contours = map.getLayers().getArray().find(l => l.get('name') === 'vector-contours')
+      const shouldShow = isOnline.value && !this.hasVisibleOfflineLayer()
+      if (basemap) basemap.setVisible(shouldShow)
+      if (contours) contours.setVisible(shouldShow)
     },
 
     async initVectorBasemap (map) {
@@ -196,15 +218,24 @@ export default {
       }
 
       const basemapLayer = new VectorTileLayer({
-        properties: { name: 'vector-basemap' }
+        properties: { name: 'vector-basemap' },
+        visible: !this.hasVisibleOfflineLayer()
       })
       const contoursLayer = new VectorTileLayer({
         properties: { name: 'vector-contours' },
-        minZoom: 10
+        minZoom: 10,
+        visible: !this.hasVisibleOfflineLayer()
       })
 
       map.getLayers().insertAt(0, basemapLayer)
       map.getLayers().insertAt(1, contoursLayer)
+
+      const fetchWithTimeout = (url, ms) => {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), ms)
+        return fetch(url, { signal: controller.signal })
+          .finally(() => clearTimeout(timer))
+      }
 
       const transformRequest = (url, type) => {
         if (type === 'Tiles') {
@@ -216,13 +247,15 @@ export default {
       try {
         const { applyStyle } = await import('ol-mapbox-style')
 
-        const basemapStyleResp = await fetch(
-          'https://cdn.arcgis.com/sharing/rest/content/items/165d7a1e43164d828064eb2027e219d5/resources/styles/root.json?f=json'
+        const basemapStyleResp = await fetchWithTimeout(
+          'https://cdn.arcgis.com/sharing/rest/content/items/165d7a1e43164d828064eb2027e219d5/resources/styles/root.json?f=json',
+          15000
         )
         await applyStyle(basemapLayer, await basemapStyleResp.json(), { transformRequest })
 
-        const contoursStyleResp = await fetch(
-          'https://cdn.arcgis.com/sharing/rest/content/items/51ca3ce6a16d4080ad955dacd6dd2fe2/resources/styles/root.json?f=json'
+        const contoursStyleResp = await fetchWithTimeout(
+          'https://cdn.arcgis.com/sharing/rest/content/items/51ca3ce6a16d4080ad955dacd6dd2fe2/resources/styles/root.json?f=json',
+          15000
         )
         await applyStyle(contoursLayer, await contoursStyleResp.json(), { transformRequest })
       } catch (e) {
@@ -241,6 +274,8 @@ export default {
       if (layerToRemove) {
         map.removeLayer(layerToRemove)
       }
+
+      this.syncBasemapVisibility(map)
     }
   }
 }
