@@ -235,38 +235,7 @@ export default {
       }
     },
     pickPhoto () {
-      if (Platform.is.cordova) {
-        navigator.camera.getPicture(
-          async (base64Data) => {
-            try {
-              const blob = await fetch('data:image/jpeg;base64,' + base64Data).then(r => r.blob())
-              const previewUrl = URL.createObjectURL(blob)
-              this.photos.push({
-                blob,
-                fileName: `gallery-${Date.now()}.jpg`,
-                mimeType: 'image/jpeg',
-                previewUrl
-              })
-            } catch (err) {
-              console.error('Error processing gallery photo', err)
-              Notify.create({ type: 'warning', message: this.$t('galleryError') })
-            }
-          },
-          (err) => {
-            console.error('Gallery error', err)
-            Notify.create({ type: 'warning', message: this.$t('galleryError') })
-          },
-          {
-            quality: 70,
-            destinationType: window.Camera.DestinationType.DATA_URL,
-            sourceType: window.Camera.PictureSourceType.PHOTOLIBRARY,
-            correctOrientation: true,
-            targetWidth: 1280
-          }
-        )
-      } else {
-        this.$refs.fileInputMultiple.click()
-      }
+      this.$refs.fileInputMultiple.click()
     },
     async addPhotoFromUri (fileUri) {
       try {
