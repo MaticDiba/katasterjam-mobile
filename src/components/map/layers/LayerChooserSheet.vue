@@ -85,6 +85,60 @@
             </q-item-section>
           </q-item>
 
+          <q-item v-if="recordedTracksStore.getAddedTracks.length" clickable @click="toggleAllRecorded">
+            <q-item-section avatar>
+              <q-avatar rounded size="44px" color="red-1" text-color="red">
+                <q-icon name="timeline" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ $t('recordedTracksLayer') }}</q-item-label>
+              <q-item-label caption>{{ recordedSummary }}</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-toggle
+                :model-value="anyRecordedVisible"
+                color="teal"
+                @click.stop="toggleAllRecorded"
+              />
+            </q-item-section>
+          </q-item>
+          <q-item
+            v-for="track in recordedTracksStore.getAddedTracks"
+            :key="`rec-${track.id}`"
+            clickable
+            class="q-pl-xl"
+            @click="recordedTracksStore.toggleVisible(track.id)"
+          >
+            <q-item-section avatar>
+              <div
+                class="recorded-track-dot"
+                :style="{ background: track.color || '#e53935' }"
+              />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ track.name }}</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-btn
+                flat
+                round
+                dense
+                icon="close"
+                size="sm"
+                :title="$t('recordedTracksRemoveFromMap')"
+                @click.stop="recordedTracksStore.setAddedToMap(track.id, false)"
+              />
+            </q-item-section>
+            <q-item-section side>
+              <q-toggle
+                :model-value="recordedTracksStore.isVisible(track.id)"
+                color="teal"
+                @click.stop="recordedTracksStore.toggleVisible(track.id)"
+              />
+            </q-item-section>
+          </q-item>
+
           <q-separator class="q-my-sm" />
 
           <q-item-label header>{{ $t('offlineLayersSection') }}</q-item-label>
@@ -143,6 +197,7 @@ import { liveQuery } from 'dexie'
 import { useMapStore } from 'stores/map-store'
 import { useOfflineMapsStore, sourceKey } from 'stores/offline-maps-store'
 import { useLocalGpxStore } from 'stores/local-gpx-store'
+import { useLocalTracksStore } from 'stores/local-tracks-store'
 import { db } from 'src/db/db'
 import { OFFLINE_VECTOR_STYLE_MISSING } from 'src/utils/vector-mbtiles-source'
 import { OFFLINE_MAPS_REQUIRE_NATIVE } from 'src/services/offline-maps-service'
@@ -183,9 +238,10 @@ export default {
     const mapStore = useMapStore()
     const offlineMapsStore = useOfflineMapsStore()
     const gpxStore = useLocalGpxStore()
+    const recordedTracksStore = useLocalTracksStore()
     const downloadedKeys = ref(new Set())
 
-    return { mapStore, offlineMapsStore, gpxStore, downloadedKeys }
+    return { mapStore, offlineMapsStore, gpxStore, recordedTracksStore, downloadedKeys }
   },
 
   computed: {
@@ -195,6 +251,14 @@ export default {
     gpxSummary () {
       const added = this.gpxStore.getAddedTracks.length
       const visible = this.gpxStore.getVisibleIds.length
+      return `${visible}/${added}`
+    },
+    anyRecordedVisible () {
+      return this.recordedTracksStore.getVisibleIds.length > 0
+    },
+    recordedSummary () {
+      const added = this.recordedTracksStore.getAddedTracks.length
+      const visible = this.recordedTracksStore.getVisibleIds.length
       return `${visible}/${added}`
     },
     offlineGroups () {
@@ -269,6 +333,10 @@ export default {
       this.gpxStore.setAllVisible(!this.anyGpxVisible)
     },
 
+    toggleAllRecorded () {
+      this.recordedTracksStore.setAllVisible(!this.anyRecordedVisible)
+    },
+
     async selectOfflineLayer (packageId, layerType) {
       const key = sourceKey(packageId, layerType)
       const active = this.offlineMapsStore.activeSources[key]
@@ -318,6 +386,7 @@ export default {
 
     this.offlineMapsStore.loadMyTiles().catch(() => {})
     this.gpxStore.refresh().catch(() => {})
+    this.recordedTracksStore.refresh().catch(() => {})
   },
 
   beforeUnmount () {
@@ -335,5 +404,12 @@ export default {
   max-width: 600px;
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
+}
+.recorded-track-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 </style>

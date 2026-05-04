@@ -10,6 +10,7 @@ import { useAuthStore } from 'stores/auth-store'
 import { useLocationStore } from 'stores/location-store'
 import { useLocalCustomLocationStore } from 'stores/local-custom-location-store'
 import { useLocalGpxStore } from 'stores/local-gpx-store'
+import { useLocalTracksStore } from 'stores/local-tracks-store'
 import { initNetworkStatus, onOnline } from 'src/helpers/network'
 
 proj4.defs('EPSG:3912', '+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9999 +x_0=500000 +y_0=-5000000 +ellps=bessel +towgs84=426.9,142.6,460.1,4.91,4.49,-12.42,17.1 +units=m +no_defs')
@@ -25,29 +26,31 @@ export default defineComponent({
     const locationStore = useLocationStore()
     const localCustomLocationStore = useLocalCustomLocationStore()
     const localGpxStore = useLocalGpxStore()
+    const localTracksStore = useLocalTracksStore()
 
     initNetworkStatus()
     onOnline(async () => {
       if (store.isAuthenticated) {
         await localCustomLocationStore.sync()
         await localGpxStore.sync()
+        await localTracksStore.sync()
       }
     })
 
     document.addEventListener('pause', (ev) => {
       const locationStore = useLocationStore()
-
-      if (locationStore.getWatchId) {
-        navigator.compass.clearWatch(locationStore.getWatchId)
-      }
-      navigator.geolocation.clearWatch(locationStore.getLocationWatchId)
+      locationStore.clearWatches()
     }, false)
     document.addEventListener('resume', (ev) => {
       const locationStore = useLocationStore()
       locationStore.initCompassAndLocation()
+      // If the OS killed the bg service while we were paused, surface it to the user.
+      locationStore.checkForInterruptedTrack().catch(e => console.error('recovery check failed', e))
     }, false)
 
     locationStore.initCompassAndLocation()
+    // First-boot recovery check: app crashed mid-recording last session.
+    locationStore.checkForInterruptedTrack().catch(e => console.error('recovery check failed', e))
     return {
       store
     }
