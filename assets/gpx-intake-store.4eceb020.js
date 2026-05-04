@@ -1,0 +1,1 @@
+import{dy as i}from"./index.5f204981.js";const r=i("gpx-intake",{state:()=>({pending:null}),actions:{setText(n,e,{defaultExcursionId:t=null}={}){this.pending={text:n,name:e,defaultExcursionId:t}},consume(){const n=this.pending;return this.pending=null,n},clear(){this.pending=null}}});export{r as u};
