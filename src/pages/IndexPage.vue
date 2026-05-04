@@ -21,6 +21,7 @@
         @centerChanged="centerChanged"/>
       <CustomLocationLayers v-if="mapStore.getCustomLocationsVisible"/>
       <GpxLayers/>
+      <RecordedTracksLayer/>
       <ol-vector-layer>
         <ol-source-vector :features="markLocations">
         </ol-source-vector>
@@ -34,6 +35,10 @@
         icon="layers"
         @click="layerChooserOpen = true"
       />
+    </q-page-sticky>
+
+    <q-page-sticky position="top" :offset="[0, 18]">
+      <RecordingHud @stop="stopRecording" />
     </q-page-sticky>
 
     <LayerChooserSheet
@@ -201,9 +206,11 @@ import CartoLayers from 'src/components/map/layers/CartoLayers.vue'
 import LocationLayers from 'src/components/map/layers/LocationLayers.vue'
 import CustomLocationLayers from 'src/components/map/layers/CustomLocationLayers.vue'
 import GpxLayers from 'src/components/map/layers/GpxLayers.vue'
+import RecordedTracksLayer from 'src/components/map/layers/RecordedTracksLayer.vue'
 import LayerChooserSheet from 'src/components/map/layers/LayerChooserSheet.vue'
 import DetailsDrawer from 'src/components/map/drawer/DetailsDrawer.vue'
 import AddLocation from 'src/components/custom-locations/AddLocation.vue'
+import RecordingHud from 'src/components/location/RecordingHud.vue'
 import { useLocationStore } from 'stores/location-store'
 import { useMapStore } from 'stores/map-store'
 import { useOfflineMapsStore } from 'stores/offline-maps-store'
@@ -223,7 +230,7 @@ const LAYER_LABEL_KEY = {
 
 export default defineComponent({
   name: 'IndexPage',
-  components: { PageFullScreen, CartoLayers, LocationLayers, CustomLocationLayers, GpxLayers, LayerChooserSheet, DetailsDrawer, AddLocation },
+  components: { PageFullScreen, CartoLayers, LocationLayers, CustomLocationLayers, GpxLayers, RecordedTracksLayer, LayerChooserSheet, DetailsDrawer, AddLocation, RecordingHud },
   setup () {
     const locationStore = useLocationStore()
     const mapStore = useMapStore()
@@ -329,6 +336,7 @@ export default defineComponent({
     async onMapClick (evt) {
       if (evt.coordinate) {
         const featuresClick = this.mapRef.map.getFeaturesAtPixel(evt.pixel, {
+          hitTolerance: 8,
           layerFilter: (layer) => {
             const name = layer.get('name')
             return name !== 'vector-basemap' && name !== 'vector-contours' && !layer.get('offline')
@@ -345,8 +353,33 @@ export default defineComponent({
     trackingClicked (evt) {
       this.locationStore.toggleLocationTracking()
     },
-    myLocationClicked (evt) {
-      this.center = this.locationStore.getMyLocationCoordinates
+    stopRecording () {
+      if (this.locationStore.getLocationTracking) {
+        this.locationStore.toggleLocationTracking()
+      }
+    },
+    async myLocationClicked () {
+      let coords = this.locationStore.getMyLocationCoordinates
+      if (!coords) {
+        try {
+          coords = await this.locationStore.requestMyLocation()
+        } catch (err) {
+          const diagnostic = window.cordova && window.cordova.plugins && window.cordova.plugins.diagnostic
+          this.$q.notify({
+            type: 'warning',
+            message: this.$t('locationUnavailable'),
+            timeout: 5000,
+            actions: this.$q.platform.is.cordova && diagnostic
+              ? [{ label: this.$t('openSettings'), color: 'white', handler: () => diagnostic.switchToLocationSettings() }]
+              : []
+          })
+          return
+        }
+      }
+      if (!coords) {
+        return
+      }
+      this.center = coords
       this.fixedCenter = true
       this.zoom = this.zoom < 15 ? 15 : this.currentZoom
     },

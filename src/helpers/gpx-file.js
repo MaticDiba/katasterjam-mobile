@@ -1,6 +1,7 @@
 import GPX from 'ol/format/GPX'
 import { getLength } from 'ol/sphere'
 import { createEmpty, extend as extendExtent } from 'ol/extent'
+import { smoothPoints } from './track-smoothing'
 
 const FORMAT = new GPX()
 
@@ -72,6 +73,73 @@ export function formatDuration (s) {
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60)
   return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+// Compact mm:ss / hh:mm:ss form for the live recording notification.
+export function formatDurationCompact (ms) {
+  if (!Number.isFinite(ms) || ms < 0) ms = 0
+  const total = Math.floor(ms / 1000)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  const pad = (n) => String(n).padStart(2, '0')
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
+}
+
+/**
+ * Serialise a recorded track + its points to GPX 1.1 XML.
+ *
+ * @param {{ name: string, startedAt?: string, endedAt?: string }} track
+ * @param {Array<{ lat: number, lon: number, timestamp?: number, altitude?: number }>} points
+ *        Sorted ascending by timestamp by the caller.
+ */
+export function serializeGpx (track, points) {
+  const escape = (s) => String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+
+  // Smooth before exporting so the GPX matches what the user sees on the
+  // map. Kalman re-applied per call — stateless from the caller's POV.
+  const exportPoints = smoothPoints(points)
+
+  const lines = []
+  lines.push('<?xml version="1.0" encoding="UTF-8"?>')
+  lines.push('<gpx version="1.1" creator="Kataster jam" xmlns="http://www.topografix.com/GPX/1/1">')
+  lines.push('  <metadata>')
+  lines.push(`    <name>${escape(track.name)}</name>`)
+  if (track.startedAt) {
+    lines.push(`    <time>${escape(track.startedAt)}</time>`)
+  }
+  lines.push('  </metadata>')
+  lines.push('  <trk>')
+  lines.push(`    <name>${escape(track.name)}</name>`)
+  lines.push('    <trkseg>')
+  for (const p of exportPoints) {
+    if (p.lat == null || p.lon == null) continue
+    const attrs = `lat="${p.lat}" lon="${p.lon}"`
+    if (p.altitude != null || p.timestamp != null) {
+      lines.push(`      <trkpt ${attrs}>`)
+      if (p.altitude != null) lines.push(`        <ele>${p.altitude}</ele>`)
+      if (p.timestamp != null) lines.push(`        <time>${new Date(p.timestamp).toISOString()}</time>`)
+      lines.push('      </trkpt>')
+    } else {
+      lines.push(`      <trkpt ${attrs}/>`)
+    }
+  }
+  lines.push('    </trkseg>')
+  lines.push('  </trk>')
+  lines.push('</gpx>')
+  return lines.join('\n')
+}
+
+export function formatTrackDuration (track) {
+  if (!track.startedAt || !track.endedAt) return null
+  const ms = new Date(track.endedAt) - new Date(track.startedAt)
+  if (Number.isNaN(ms) || ms < 0) return null
+  return formatDuration(Math.round(ms / 1000))
 }
 
 function extractMeta (text) {

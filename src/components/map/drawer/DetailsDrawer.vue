@@ -24,12 +24,18 @@
             </div>
             <q-space />
             <q-btn flat round icon="info" v-if="clickedFeature.type !== 'click'" @click="info(clickedFeature.id)"/>
+            <q-btn flat round icon="add_a_photo" v-if="clickedFeature.type === 'poi' && clickedFeature.externalId" @click="addPhotos()"/>
             <q-btn flat round icon="add" v-if="clickedFeature.type == 'click'" @click="addNewLocation()"/>
             <q-btn flat round icon="assist_walker"  @click="goTo()"/>
           </q-card-section>
         </template>
       </q-card>
     </q-dialog>
+    <AddPhotosDialog
+      v-if="clickedFeature.externalId"
+      v-model="showAddPhotos"
+      :location-external-id="clickedFeature.externalId"
+    />
   </div>
 </template>
 <script>
@@ -41,14 +47,17 @@ import { Feature } from 'ol'
 import { storeToRefs } from 'pinia'
 import { useMapStore } from 'stores/map-store'
 import { useLocationStore } from 'stores/location-store'
+import AddPhotosDialog from 'src/components/custom-locations/AddPhotosDialog.vue'
 
 export default {
+  components: { AddPhotosDialog },
   setup () {
     const quasar = useQuasar()
     const mapStore = useMapStore()
     const locationStore = useLocationStore()
     mapStore.hideDrawer()
     const dialog = ref(false)
+    const showAddPhotos = ref(false)
     const { showBottomDrawer } = storeToRefs(mapStore)
 
     return {
@@ -56,7 +65,8 @@ export default {
       confirmDialog: quasar.dialog,
       mapStore,
       locationStore,
-      showBottomDrawer
+      showBottomDrawer,
+      showAddPhotos
     }
   },
   computed: {
@@ -72,10 +82,15 @@ export default {
       this.mapStore.hideDrawer()
     },
     goTo () {
-      const name = `[${this.clickedFeature.id}] ${this.clickedFeature.name}`
+      const isClick = this.clickedFeature.type === 'click'
+      const isCave = this.clickedFeature.type === 'cave'
+      const labelKey = isClick ? 'navigateToPoint' : (isCave ? 'navigateToCave' : 'navigateToCustomLocation')
+      const subject = isClick
+        ? `${this.clickedFeature.lat?.toFixed(5)}, ${this.clickedFeature.lng?.toFixed(5)}`
+        : `[${this.clickedFeature.id}] ${this.clickedFeature.name}`
       this.confirmDialog({
-        title: `${this.$t('confirm')}`,
-        message: `${this.$t(this.clickedFeature.type === 'cave' ? 'navigateToCave' : 'navigateToCustomLocation')}: ${name}`,
+        title: this.$t('confirm'),
+        message: `${this.$t(labelKey)}: ${subject}`,
         cancel: true,
         persistent: true
       }).onOk(() => {
@@ -92,6 +107,9 @@ export default {
     },
     addNewLocation () {
       this.locationStore.createNew([this.clickedFeature.lng, this.clickedFeature.lat])
+    },
+    addPhotos () {
+      this.showAddPhotos = true
     }
   },
   watch: {

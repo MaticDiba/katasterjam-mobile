@@ -1,0 +1,3 @@
+[submodule "src-cordova/local-plugins/cordova-background-geolocation-katasterjam"]
+	path = src-cordova/local-plugins/cordova-background-geolocation-katasterjam
+	url = https://github.com/DZRJL/cordova-background-geolocation-katasterjam.git

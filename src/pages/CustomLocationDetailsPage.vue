@@ -19,8 +19,16 @@
         direction="down"
       >
         <q-fab-action label-position="left" color="green" icon="map" :label="$t('mainMap')" @click="showOnMap" />
+        <q-fab-action label-position="left" color="blue" icon="add_a_photo" :label="$t('addPhotos')" @click="showAddPhotos = true" />
         <q-fab-action label-position="left" color="orange" icon="assist_walker" :label="$t('navigate')" @click="goTo" />
       </q-fab>
+
+      <AddPhotosDialog
+        v-if="customLocation && customLocation.externalId"
+        v-model="showAddPhotos"
+        :location-external-id="customLocation.externalId"
+        @saved="loadPhotos"
+      />
     </q-card-section>
 
       <q-card-section horizontal>
@@ -126,13 +134,14 @@ import { fromLonLat } from 'ol/proj'
 import Point from 'ol/geom/Point'
 import SimpleHeaderMap from 'src/components/map/SimpleHeaderMap.vue'
 import OrganizationsList from 'src/components/organizations/OrganizationsList.vue'
+import AddPhotosDialog from 'src/components/custom-locations/AddPhotosDialog.vue'
 import { Feature } from 'ol'
 import { useLocalCustomLocationStore } from 'src/stores/local-custom-location-store'
 import { api } from 'src/boot/api'
 import { isOnline } from 'src/helpers/network'
 export default {
   name: 'customLocationDetailsPage',
-  components: { OrganizationsList, SimpleHeaderMap },
+  components: { OrganizationsList, SimpleHeaderMap, AddPhotosDialog },
   setup () {
     const { dialog } = useQuasar()
     const center = ref([1637531, 5766419])
@@ -144,6 +153,7 @@ export default {
     const selectedPhotoUrl = ref('')
     const loadingFullPhoto = ref(false)
     const fullPhotoUrls = ref([])
+    const showAddPhotos = ref(false)
     const localStore = useLocalCustomLocationStore()
 
     return {
@@ -158,6 +168,7 @@ export default {
       selectedPhotoUrl,
       loadingFullPhoto,
       fullPhotoUrls,
+      showAddPhotos,
       localStore
     }
   },

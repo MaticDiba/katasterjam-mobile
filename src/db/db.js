@@ -52,3 +52,32 @@ db.version(4.7).stores({
 db.version(4.8).stores({
   gpxTracks: 'externalId, id, fkExcursionId, name, statusId, filePath, fileName, mimeType, createdAt, syncedAt'
 })
+
+db.version(4.9).stores({
+  tracks: '++id, name, status, startedAt, endedAt',
+  trackPoints: '++id, trackId, [trackId+timestamp]'
+})
+
+db.version(4.10).stores({
+  // Add fkExcursionId + syncedAt as indexes so we can filter by excursion
+  // and find pending uploads. color, serverId, gpxFilePath stay non-indexed.
+  tracks: '++id, name, status, startedAt, endedAt, fkExcursionId, syncedAt'
+}).upgrade(tx => {
+  return tx.table('tracks').toCollection().modify(t => {
+    if (t.color === undefined) t.color = '#e53935'
+    if (t.fkExcursionId === undefined) t.fkExcursionId = null
+    if (t.serverId === undefined) t.serverId = null
+    if (t.syncedAt === undefined) t.syncedAt = null
+    if (t.gpxFilePath === undefined) t.gpxFilePath = null
+  })
+})
+
+db.version(4.11).stores({
+  // No index changes — addedToMap/mapVisible are only filtered in memory.
+  tracks: '++id, name, status, startedAt, endedAt, fkExcursionId, syncedAt'
+}).upgrade(tx => {
+  return tx.table('tracks').toCollection().modify(t => {
+    if (t.addedToMap === undefined) t.addedToMap = false
+    if (t.mapVisible === undefined) t.mapVisible = true
+  })
+})

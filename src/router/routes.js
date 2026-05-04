@@ -82,7 +82,9 @@ const routes = [
       { path: '/offline-data/:id', name: 'offline-data-page', component: () => import('pages/OfflineDataPage.vue'), beforeEnter: offlineRecordResolver },
       { path: '/offline-maps', name: 'offline-maps', component: () => import('pages/OfflineMapsPage.vue') },
       { path: '/gpx', name: 'gpx-list', component: () => import('pages/GpxListPage.vue') },
-      { path: '/gpx/import', name: 'gpx-import', component: () => import('pages/GpxImportPage.vue') }
+      { path: '/gpx/import', name: 'gpx-import', component: () => import('pages/GpxImportPage.vue') },
+      { path: '/tracks', name: 'tracks-list', component: () => import('pages/TrackListPage.vue') },
+      { path: '/tracks/:id', name: 'tracks-detail', component: () => import('pages/TrackDetailPage.vue') }
     ]
   },
 
