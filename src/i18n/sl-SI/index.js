@@ -110,6 +110,9 @@ export default {
   customLocations: 'Točke uporabnikov',
   searchForCustomLocation: 'Išči točke uporabnikov',
   navigateToCustomLocation: 'Želite začeti navigacijo do te točke',
+  navigateToPoint: 'Želite začeti navigacijo do te točke',
+  locationUnavailable: 'Lokacije ni mogoče pridobiti. Preverite, da je lokacija vklopljena in dovoljenje odobreno.',
+  openSettings: 'Odpri nastavitve',
   customLocationType: 'Tip točke',
   customLocationTypes: {
     Dihalnik: 'Dihalnik',

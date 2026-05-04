@@ -336,6 +336,7 @@ export default defineComponent({
     async onMapClick (evt) {
       if (evt.coordinate) {
         const featuresClick = this.mapRef.map.getFeaturesAtPixel(evt.pixel, {
+          hitTolerance: 8,
           layerFilter: (layer) => {
             const name = layer.get('name')
             return name !== 'vector-basemap' && name !== 'vector-contours' && !layer.get('offline')
@@ -357,8 +358,28 @@ export default defineComponent({
         this.locationStore.toggleLocationTracking()
       }
     },
-    myLocationClicked (evt) {
-      this.center = this.locationStore.getMyLocationCoordinates
+    async myLocationClicked () {
+      let coords = this.locationStore.getMyLocationCoordinates
+      if (!coords) {
+        try {
+          coords = await this.locationStore.requestMyLocation()
+        } catch (err) {
+          const diagnostic = window.cordova && window.cordova.plugins && window.cordova.plugins.diagnostic
+          this.$q.notify({
+            type: 'warning',
+            message: this.$t('locationUnavailable'),
+            timeout: 5000,
+            actions: this.$q.platform.is.cordova && diagnostic
+              ? [{ label: this.$t('openSettings'), color: 'white', handler: () => diagnostic.switchToLocationSettings() }]
+              : []
+          })
+          return
+        }
+      }
+      if (!coords) {
+        return
+      }
+      this.center = coords
       this.fixedCenter = true
       this.zoom = this.zoom < 15 ? 15 : this.currentZoom
     },

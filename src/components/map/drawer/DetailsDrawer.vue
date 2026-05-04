@@ -82,10 +82,15 @@ export default {
       this.mapStore.hideDrawer()
     },
     goTo () {
-      const name = `[${this.clickedFeature.id}] ${this.clickedFeature.name}`
+      const isClick = this.clickedFeature.type === 'click'
+      const isCave = this.clickedFeature.type === 'cave'
+      const labelKey = isClick ? 'navigateToPoint' : (isCave ? 'navigateToCave' : 'navigateToCustomLocation')
+      const subject = isClick
+        ? `${this.clickedFeature.lat?.toFixed(5)}, ${this.clickedFeature.lng?.toFixed(5)}`
+        : `[${this.clickedFeature.id}] ${this.clickedFeature.name}`
       this.confirmDialog({
-        title: `${this.$t('confirm')}`,
-        message: `${this.$t(this.clickedFeature.type === 'cave' ? 'navigateToCave' : 'navigateToCustomLocation')}: ${name}`,
+        title: this.$t('confirm'),
+        message: `${this.$t(labelKey)}: ${subject}`,
         cancel: true,
         persistent: true
       }).onOk(() => {

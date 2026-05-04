@@ -110,6 +110,9 @@ export default {
   customLocations: 'Locations',
   searchForCustomLocation: 'Search for custom locations',
   navigateToCustomLocation: 'Do you want to start navigation to this custom location',
+  navigateToPoint: 'Do you want to start navigation to this point',
+  locationUnavailable: 'Could not get your location. Make sure location is enabled and permission is granted.',
+  openSettings: 'Open settings',
   customLocationType: 'Custom location type',
   customLocationTypes: {
     Dihalnik: 'Blow hole',
