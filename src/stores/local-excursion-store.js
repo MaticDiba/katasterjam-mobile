@@ -50,7 +50,7 @@ export const useLocalExcursionsStore = defineStore('local-excursions', {
     incrementPageNumber () {
       this.searchParameters.pageNumber++
     },
-    loadCustomLocations (excursions) {
+    loadExcursions (excursions) {
       this.excursions = excursions
     },
     async get (id) {
@@ -71,6 +71,7 @@ export const useLocalExcursionsStore = defineStore('local-excursions', {
       }
 
       let totalPages = 1
+      let wrote = false
       try {
         while (params.pageNumber < totalPages) {
           params.pageNumber += 1
@@ -79,13 +80,14 @@ export const useLocalExcursionsStore = defineStore('local-excursions', {
           const excursions = response.data
           if (excursions.length > 0) {
             await db.excursions.bulkPut(excursions)
-            await this.search()
+            wrote = true
           }
           onProgress?.(totalPages > 0 ? Math.min(1, params.pageNumber / totalPages) : 1)
         }
         localStorage.setItem('lastImportExcursions', dateNow)
+        if (wrote) await this.search()
       } catch (error) {
-        console.error('Error occurred while searching for new excursions')
+        console.error('Error occurred while searching for new excursions', error)
       }
     },
     async search () {
@@ -113,7 +115,7 @@ export const useLocalExcursionsStore = defineStore('local-excursions', {
         .toArray()
 
       const localExcursions = await queryWithOffset
-      this.loadCustomLocations(localExcursions)
+      this.loadExcursions(localExcursions)
     }
   }
 })

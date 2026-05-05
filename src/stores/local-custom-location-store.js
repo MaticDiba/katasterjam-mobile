@@ -119,6 +119,7 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
       }
 
       let totalPages = 1
+      let wrote = false
       try {
         while (params.pageNumber < totalPages) {
           params.pageNumber += 1
@@ -127,13 +128,14 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
           const customLocations = response.data
           if (customLocations.length > 0) {
             await db.customLocations.bulkPut(customLocations)
-            await this.search()
+            wrote = true
           }
           onProgress?.(totalPages > 0 ? Math.min(1, params.pageNumber / totalPages) : 1)
         }
         localStorage.setItem('lastImportCustomLocations', dateNow)
+        if (wrote) await this.search()
       } catch (error) {
-        console.error('Error occured while searching for new custom locations')
+        console.error('Error occured while searching for new custom locations', error)
       }
     },
     async fetchCustomLocationsTypes () {
@@ -143,7 +145,7 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
         })
         await db.customLocationsTypes.bulkPut(response.data)
       } catch (error) {
-        console.error('Error occured while searching for new custom location types')
+        console.error('Error occured while searching for new custom location types', error)
       }
     },
     async fetchCustomLocationsStatuses () {
@@ -153,7 +155,7 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
         })
         await db.customLocationsStatuses.bulkPut(response.data)
       } catch (error) {
-        console.error('Error occured while searching for new custom location statuses')
+        console.error('Error occured while searching for new custom location statuses', error)
       }
     },
     async search () {
