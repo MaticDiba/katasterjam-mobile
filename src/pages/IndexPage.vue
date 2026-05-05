@@ -50,6 +50,9 @@
     <q-page-sticky position="bottom-left" :offset="[18, 18]">
       <q-btn fab :icon="isCenterFixed ? 'my_location' : 'location_searching'" color="accent" @click="myLocationClicked" />
     </q-page-sticky>
+    <q-page-sticky position="bottom" :offset="[0, 18]">
+      <div ref="scaleLineEl" class="map-scale-line" />
+    </q-page-sticky>
     <q-page-sticky position="bottom-right" :offset="[18, 18]">
       <q-fab size="100px"
         vertical-actions-align="right"
@@ -201,6 +204,7 @@ import { ref, defineComponent } from 'vue'
 import { fromLonLat, toLonLat } from 'ol/proj'
 import Point from 'ol/geom/Point'
 import { Feature } from 'ol'
+import ScaleLine from 'ol/control/ScaleLine'
 import PageFullScreen from 'layouts/PageFullScreen.vue'
 import CartoLayers from 'src/components/map/layers/CartoLayers.vue'
 import LocationLayers from 'src/components/map/layers/LocationLayers.vue'
@@ -252,6 +256,7 @@ export default defineComponent({
 
     const view = ref('')
     const mapRef = ref('')
+    const scaleLineEl = ref(null)
     mapStore.saveMapRef(mapRef)
 
     return {
@@ -261,6 +266,7 @@ export default defineComponent({
       zoom,
       view,
       mapRef,
+      scaleLineEl,
       markLocations,
       goTo,
       mapStore,
@@ -466,7 +472,40 @@ export default defineComponent({
     this.mapRef.map.on('click', async (evt) => {
       await this.onMapClick(evt)
     })
+    this.scaleLine = new ScaleLine({
+      units: 'metric',
+      bar: false,
+      minWidth: 80,
+      target: this.scaleLineEl
+    })
+    this.mapRef.map.addControl(this.scaleLine)
     this.offlineMapsStore.loadLocalLayers()
+  },
+  beforeUnmount () {
+    if (this.scaleLine) {
+      this.mapRef?.map?.removeControl(this.scaleLine)
+      this.scaleLine = null
+    }
   }
 })
 </script>
+
+<style scoped>
+.map-scale-line {
+  background: rgba(255, 255, 255, 0.85);
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  font-size: 12px;
+  line-height: 1.2;
+}
+.map-scale-line :deep(.ol-scale-line) {
+  position: static;
+  background: transparent;
+  padding: 0;
+}
+.map-scale-line :deep(.ol-scale-line-inner) {
+  color: #333;
+  border-color: #333;
+}
+</style>
