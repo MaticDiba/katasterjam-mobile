@@ -103,7 +103,9 @@ const passwordRules = [v => !!v || t('required')]
 async function runStep (labelKey, fn) {
   stepLabel.value = t(labelKey)
   progress.value = 0
-  await fn(p => { progress.value = p })
+  await fn(p => {
+    progress.value = Number.isFinite(p) ? Math.min(1, Math.max(0, p)) : 1
+  })
   progress.value = 1
 }
 

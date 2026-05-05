@@ -57,7 +57,7 @@ export const useLocalCavesStore = defineStore('caves', {
           return { x: xy[0], y: xy[1], ...cave }
         })
         await db.caves.bulkPut(caves)
-        onProgress?.(params.pageNumber / totalPages)
+        onProgress?.(totalPages > 0 ? Math.min(1, params.pageNumber / totalPages) : 1)
       }
       // Save the import marker only after all pages succeeded; a mid-loop
       // failure leaves the marker absent so the next sync retries.

@@ -129,7 +129,7 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
             await db.customLocations.bulkPut(customLocations)
             await this.search()
           }
-          onProgress?.(params.pageNumber / totalPages)
+          onProgress?.(totalPages > 0 ? Math.min(1, params.pageNumber / totalPages) : 1)
         }
         localStorage.setItem('lastImportCustomLocations', dateNow)
       } catch (error) {
