@@ -82,7 +82,13 @@ db.version(4.11).stores({
   })
 })
 
-db.version(4.12).stores({
-  // Drop the legacy offlineStore table (replaced by myPackages / offlineMaps).
-  offlineStore: null
+// Note: Dexie rounds versions to one decimal (Math.round(verno * 10) / 10),
+// so 4.10/4.11/4.12 all collapse to 4.1 and won't trigger an upgrade past 4.9.
+// We bump to 5 to force `onupgradeneeded` and drop the dead legacy tables.
+db.version(5).stores({
+  // offlineStore is replaced by myPackages / offlineMaps.
+  // tiles was the WMTS cache for the old offline-data system; nothing writes
+  // to it anymore (CustomWMTSLayer no longer reads it either).
+  offlineStore: null,
+  tiles: null
 })
