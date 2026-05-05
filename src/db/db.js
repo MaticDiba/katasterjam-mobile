@@ -81,3 +81,8 @@ db.version(4.11).stores({
     if (t.mapVisible === undefined) t.mapVisible = true
   })
 })
+
+db.version(4.12).stores({
+  // Drop the legacy offlineStore table (replaced by myPackages / offlineMaps).
+  offlineStore: null
+})
