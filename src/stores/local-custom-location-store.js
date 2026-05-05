@@ -109,33 +109,28 @@ export const useLocalCustomLocationStore = defineStore('local-custom-locations',
       })
       return externalId
     },
-    async tryFetchCustomLocationsForOffline () {
-      this.searchParameters.lastUpdated = localStorage.getItem('lastImportCustomLocations')
+    async tryFetchCustomLocationsForOffline (onProgress) {
       const dateNow = getLongDateNow()
-      const searchParameters = {
+      const params = {
         ...this.searchParameters,
+        lastUpdated: localStorage.getItem('lastImportCustomLocations'),
         pageNumber: 0,
         pageSize: 500
       }
 
-      let allPages = 1
+      let totalPages = 1
       try {
-        while (searchParameters.pageNumber < allPages) {
-          searchParameters.pageNumber += 1
-          const response = await api.get('/api/customlocations', {
-            params: searchParameters
-          })
-
-          const pagination = JSON.parse(response.headers.pagination)
-          allPages = pagination.totalPages
+        while (params.pageNumber < totalPages) {
+          params.pageNumber += 1
+          const response = await api.get('/api/customlocations', { params })
+          totalPages = JSON.parse(response.headers.pagination).totalPages
           const customLocations = response.data
-
           if (customLocations.length > 0) {
             await db.customLocations.bulkPut(customLocations)
             await this.search()
           }
+          onProgress?.(params.pageNumber / totalPages)
         }
-
         localStorage.setItem('lastImportCustomLocations', dateNow)
       } catch (error) {
         console.error('Error occured while searching for new custom locations')

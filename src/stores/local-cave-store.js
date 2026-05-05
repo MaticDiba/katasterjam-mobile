@@ -35,40 +35,32 @@ export const useLocalCavesStore = defineStore('caves', {
   },
 
   actions: {
-    async tryFetchCavesForOffline () {
+    async tryFetchCavesForOffline (onProgress) {
       const importResponse = await api.get('/api/caves/imports/latest', {
         params: this.searchParameters
       })
 
       const importRecord = await db.caveImports.orderBy('id').last()
       if (importRecord && importRecord.id === importResponse.data.id) {
+        onProgress?.(1)
         return
       }
 
       await db.caveImports.put(importResponse.data)
-      this.totalPages = importResponse.data.numberOfCaves
-      this.searchParameters.pageNumber = 0
-      this.searchParameters.pageSize = 500
-      while (this.searchParameters.pageNumber < this.totalPages) {
-        this.searchParameters.pageNumber += 1
-        const response = await api.get('/api/caves', {
-          params: this.searchParameters
-        })
-        const pagination = JSON.parse(response.headers.pagination)
-        this.totalPages = pagination.totalPages
+
+      const params = { ...this.searchParameters, pageNumber: 0, pageSize: 500 }
+      let totalPages = 1
+      while (params.pageNumber < totalPages) {
+        params.pageNumber += 1
+        const response = await api.get('/api/caves', { params })
+        totalPages = JSON.parse(response.headers.pagination).totalPages
         const caves = response.data.map(cave => {
           const xy = olProj.fromLonLat([cave.lng, cave.lat])
-
-          return {
-            x: xy[0],
-            y: xy[1],
-            ...cave
-          }
+          return { x: xy[0], y: xy[1], ...cave }
         })
         await db.caves.bulkPut(caves)
+        onProgress?.(params.pageNumber / totalPages)
       }
-      this.searchParameters.pageNumber = 0
-      this.searchParameters.pageSize = 10
     },
     async searchForCaves () {
       if (this.searchParameters.sort === 'distance') {
