@@ -46,8 +46,6 @@ export const useLocalCavesStore = defineStore('caves', {
         return
       }
 
-      await db.caveImports.put(importResponse.data)
-
       const params = { ...this.searchParameters, pageNumber: 0, pageSize: 500 }
       let totalPages = 1
       while (params.pageNumber < totalPages) {
@@ -61,6 +59,9 @@ export const useLocalCavesStore = defineStore('caves', {
         await db.caves.bulkPut(caves)
         onProgress?.(params.pageNumber / totalPages)
       }
+      // Save the import marker only after all pages succeeded; a mid-loop
+      // failure leaves the marker absent so the next sync retries.
+      await db.caveImports.put(importResponse.data)
     },
     async searchForCaves () {
       if (this.searchParameters.sort === 'distance') {
