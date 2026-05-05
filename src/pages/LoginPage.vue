@@ -10,12 +10,13 @@
 
         <q-card class="login-card full-width">
           <q-card-section>
-            <q-form @submit.prevent="onSubmit" class="q-gutter-md">
+            <q-form @submit.prevent="onSubmit" class="q-gutter-y-md">
               <q-input
                 v-model="account.email"
                 type="email"
                 :label="t('email')"
                 outlined
+                clearable
                 autocomplete="email"
                 lazy-rules
                 :rules="emailRules"
@@ -25,6 +26,7 @@
                 type="password"
                 :label="t('password')"
                 outlined
+                clearable
                 autocomplete="current-password"
                 lazy-rules
                 :rules="passwordRules"
@@ -47,10 +49,11 @@
             <div v-if="loggingIn" class="q-mt-md">
               <div class="row items-center justify-between text-caption text-grey-7 q-mb-xs">
                 <span>{{ stepLabel }}</span>
-                <span>{{ Math.round(progress * 100) }}%</span>
+                <span v-if="!indeterminate">{{ Math.round(progress * 100) }}%</span>
               </div>
               <q-linear-progress
                 :value="progress"
+                :indeterminate="indeterminate"
                 color="primary"
                 rounded
                 instant-feedback
@@ -70,7 +73,7 @@
 
 <script setup>
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from 'stores/auth-store'
@@ -81,6 +84,7 @@ import { useLocalExcursionsStore } from 'stores/local-excursion-store'
 
 const { t } = useI18n({ useScope: 'global' })
 const router = useRouter()
+const route = useRoute()
 const $q = useQuasar()
 
 const authStore = useAuthStore()
@@ -93,6 +97,7 @@ const account = reactive({ email: '', password: '' })
 const loggingIn = ref(false)
 const progress = ref(0)
 const stepLabel = ref('')
+const indeterminate = ref(false)
 
 const emailRules = [
   v => !!v || t('required'),
@@ -100,13 +105,36 @@ const emailRules = [
 ]
 const passwordRules = [v => !!v || t('required')]
 
-async function runStep (labelKey, fn) {
-  stepLabel.value = t(labelKey)
+const syncSteps = [
+  { label: 'fetchingCaveData', run: p => cavesStore.tryFetchCavesForOffline(p) },
+  { label: 'fetchingCustomLocationData', run: p => customLocations.tryFetchCustomLocationsForOffline(p) },
+  { label: 'fetchingCustomLocationTypes', run: () => customLocations.fetchCustomLocationsTypes(), indeterminate: true },
+  { label: 'fetchingCustomLocationStatuses', run: () => customLocations.fetchCustomLocationsStatuses(), indeterminate: true },
+  { label: 'fetchingExcursionsData', run: p => excursionsStore.tryFetchExcursionsForOffline(p) }
+]
+
+async function runStep (step) {
+  stepLabel.value = t(step.label)
+  indeterminate.value = !!step.indeterminate
   progress.value = 0
-  await fn(p => {
-    progress.value = Number.isFinite(p) ? Math.min(1, Math.max(0, p)) : 1
-  })
-  progress.value = 1
+  try {
+    await step.run(p => {
+      progress.value = Number.isFinite(p) ? Math.min(1, Math.max(0, p)) : 1
+    })
+  } catch (err) {
+    // A single sync step failing must not abort the rest of the chain or
+    // make the user think login itself failed — they're already authenticated.
+    console.error(`Sync step "${step.label}" failed`, err)
+  }
+  if (!step.indeterminate) progress.value = 1
+}
+
+function safeRedirect () {
+  const raw = route.query.redirect
+  if (typeof raw === 'string' && raw.startsWith('/') && !raw.startsWith('//')) {
+    return raw
+  }
+  return '/'
 }
 
 async function onSubmit () {
@@ -118,20 +146,21 @@ async function onSubmit () {
       rememberMe: true
     })
     if (!result.success) {
-      console.error(result.message[0])
+      console.error(result.message?.[0])
       $q.notify({ message: t('loginFailed'), color: 'negative' })
       return
     }
-    await mapStore.fetchMapCapabilities()
-    await runStep('fetchingCaveData', p => cavesStore.tryFetchCavesForOffline(p))
-    await runStep('fetchingCustomLocationData', p => customLocations.tryFetchCustomLocationsForOffline(p))
-    stepLabel.value = t('fetchingCustomLocationTypes')
-    await customLocations.fetchCustomLocationsTypes()
-    stepLabel.value = t('fetchingCustomLocationStatuses')
-    await customLocations.fetchCustomLocationsStatuses()
-    await runStep('fetchingExcursionsData', p => excursionsStore.tryFetchExcursionsForOffline(p))
-    router.replace('/')
+    try {
+      await mapStore.fetchMapCapabilities()
+    } catch (err) {
+      console.error('fetchMapCapabilities failed', err)
+    }
+    for (const step of syncSteps) {
+      await runStep(step)
+    }
+    router.replace(safeRedirect())
   } catch (err) {
+    // Only auth-layer errors land here; sync failures are caught in runStep.
     console.error(err)
     $q.notify({ message: t('loginFailed'), color: 'negative' })
   } finally {
