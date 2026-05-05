@@ -257,6 +257,7 @@ export default defineComponent({
     const view = ref('')
     const mapRef = ref('')
     const scaleLineEl = ref(null)
+    const scaleLine = ref(null)
     mapStore.saveMapRef(mapRef)
 
     return {
@@ -267,6 +268,7 @@ export default defineComponent({
       view,
       mapRef,
       scaleLineEl,
+      scaleLine,
       markLocations,
       goTo,
       mapStore,
