@@ -50,7 +50,7 @@ export const useLocalExcursionsStore = defineStore('local-excursions', {
     incrementPageNumber () {
       this.searchParameters.pageNumber++
     },
-    loadCustomLocations (excursions) {
+    loadExcursions (excursions) {
       this.excursions = excursions
     },
     async get (id) {
@@ -61,36 +61,33 @@ export const useLocalExcursionsStore = defineStore('local-excursions', {
     async put (excursion) {
       await db.excursions.put(excursion)
     },
-    async tryFetchExcursionsForOffline () {
-      this.searchParameters.lastUpdated = localStorage.getItem('lastImportExcursions')
+    async tryFetchExcursionsForOffline (onProgress) {
       const dateNow = getLongDateNow()
-      const searchParameters = {
+      const params = {
         ...this.searchParameters,
+        lastUpdated: localStorage.getItem('lastImportExcursions'),
         pageNumber: 0,
         pageSize: 500
       }
-      let allPages = 1
 
+      let totalPages = 1
+      let wrote = false
       try {
-        while (searchParameters.pageNumber < allPages) {
-          searchParameters.pageNumber += 1
-          const response = await api.get('/api/excursions', {
-            params: searchParameters
-          })
-
-          const pagination = JSON.parse(response.headers.pagination)
-          allPages = pagination.totalPages
+        while (params.pageNumber < totalPages) {
+          params.pageNumber += 1
+          const response = await api.get('/api/excursions', { params })
+          totalPages = JSON.parse(response.headers.pagination).totalPages
           const excursions = response.data
-
           if (excursions.length > 0) {
             await db.excursions.bulkPut(excursions)
-            await this.search()
+            wrote = true
           }
+          onProgress?.(totalPages > 0 ? Math.min(1, params.pageNumber / totalPages) : 1)
         }
-
         localStorage.setItem('lastImportExcursions', dateNow)
+        if (wrote) await this.search()
       } catch (error) {
-        console.error('Error occurred while searching for new excursions')
+        console.error('Error occurred while searching for new excursions', error)
       }
     },
     async search () {
@@ -118,7 +115,7 @@ export const useLocalExcursionsStore = defineStore('local-excursions', {
         .toArray()
 
       const localExcursions = await queryWithOffset
-      this.loadCustomLocations(localExcursions)
+      this.loadExcursions(localExcursions)
     }
   }
 })

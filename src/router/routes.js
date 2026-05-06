@@ -1,6 +1,5 @@
 import { api } from 'src/boot/api'
 import { useLocalCavesStore } from '../stores/local-cave-store'
-import { useOfflineStore } from 'stores/offline-store'
 import { useLocalCustomLocationStore } from '../stores/local-custom-location-store'
 import { useLocalExcursionsStore } from '../stores/local-excursion-store'
 
@@ -53,18 +52,11 @@ const customLocationResolver = async (to, from, next) => {
 
   next()
 }
-const offlineRecordResolver = async (to, from, next) => {
-  const store = useOfflineStore()
-  const offlineRecord = await store.get(to.params.id)
-  to.meta.offlineRecord = offlineRecord
-  next()
-}
-
 const routes = [
   {
     name: 'Login',
     path: '/login',
-    component: () => import('pages/Login.vue')
+    component: () => import('pages/LoginPage.vue')
   },
   {
     path: '/',
@@ -78,8 +70,6 @@ const routes = [
       { path: '/trips/details/:id', name: 'trips-details', component: () => import('src/pages/TripDetailsPage.vue'), beforeEnter: excursionResolver },
       { path: '/custom-locations', name: 'custom-locations', component: () => import('pages/CustomLocationSearchPage.vue') },
       { path: '/custom-locations/details/:id', name: 'custom-locations-details', component: () => import('src/pages/CustomLocationDetailsPage.vue'), beforeEnter: customLocationResolver },
-      { path: '/offline-data', name: 'offline-data-list', component: () => import('pages/OfflineDataList.vue') },
-      { path: '/offline-data/:id', name: 'offline-data-page', component: () => import('pages/OfflineDataPage.vue'), beforeEnter: offlineRecordResolver },
       { path: '/offline-maps', name: 'offline-maps', component: () => import('pages/OfflineMapsPage.vue') },
       { path: '/gpx', name: 'gpx-list', component: () => import('pages/GpxListPage.vue') },
       { path: '/gpx/import', name: 'gpx-import', component: () => import('pages/GpxImportPage.vue') },

@@ -66,14 +66,6 @@
             <q-item-label>{{ $t('tracksRecorded') }}</q-item-label>
           </q-item-section>
         </q-item>
-        <q-item clickable :to="{ name: 'offline-data-list' }">
-          <q-item-section avatar>
-            <q-icon name="wifi_off" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label>{{ $t('offlinedata') }}</q-item-label>
-          </q-item-section>
-        </q-item>
         <q-item clickable :to="{ name: 'offline-maps' }">
           <q-item-section avatar>
             <q-icon name="map" />
