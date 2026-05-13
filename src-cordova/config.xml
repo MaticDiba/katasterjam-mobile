@@ -13,6 +13,7 @@
     <allow-navigation href="about:*" />
     <allow-navigation href="https://*/*" />
     <allow-navigation href="http://*/*" />
+    <hook src="hooks/after_plugin_install/fix-write-external-storage.js" type="after_plugin_install" />
     <platform name="android">
         <preference name="AndroidLaunchMode" value="singleTask" />
         <config-file parent="/manifest" target="AndroidManifest.xml">

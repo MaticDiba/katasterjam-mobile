@@ -163,6 +163,7 @@ export default {
   offlineMapsRequireNative: 'Prenos offline zemljevidov je na voljo samo v mobilni aplikaciji.',
   myTilesTab: 'Moji sloji',
   libraryTab: 'Knjižnica',
+  tapPackageToHighlight: 'Pritisnite paket za prikaz območja',
   noMyTilesYet: 'Še nimate offline slojev',
   noMyTilesYetCaption: 'Ustvarite nov offline zemljevid iz pogleda zemljevida ali izberite enega iz Knjižnice.',
   offlineRegistryUnavailable: 'Knjižnica ni na voljo brez povezave. Preneseni sloji v Mojih slojih še naprej delujejo.',

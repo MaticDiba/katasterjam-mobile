@@ -162,6 +162,7 @@ export default {
   offlineMapsRequireNative: 'Offline map downloads are only available in the mobile app build.',
   myTilesTab: 'MyTiles',
   libraryTab: 'Library',
+  tapPackageToHighlight: 'Tap a package to highlight its area',
   noMyTilesYet: 'No offline tiles yet',
   noMyTilesYetCaption: 'Create a new offline map from the map view, or pick one from the Library.',
   offlineRegistryUnavailable: 'Library is unavailable while offline. Your downloaded tiles in MyTiles still work.',

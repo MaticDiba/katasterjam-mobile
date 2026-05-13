@@ -14,6 +14,18 @@
 
     <q-separator />
 
+    <div v-if="activePackages.length > 0" class="preview-map-wrapper">
+      <OfflineMapPackagesPreviewMap
+        :packages="activePackages"
+        v-model:selectedId="selectedPackageId"
+        height="min(200px, 28vh)"
+      />
+      <div v-if="selectedPackageId == null" class="preview-map-hint text-caption text-grey-7 q-px-md q-py-xs">
+        {{ $t('tapPackageToHighlight') }}
+      </div>
+      <q-separator />
+    </div>
+
     <q-tab-panels v-model="activeTab" animated>
 
       <q-tab-panel name="packages">
@@ -31,7 +43,12 @@
 
           <q-list v-else separator>
             <div v-for="pkg in offlineMapsStore.myTiles" :key="pkg.id">
-              <q-item>
+              <q-item
+                clickable
+                :active="selectedPackageId === pkg.id"
+                active-class="bg-blue-1"
+                @click="selectedPackageId = pkg.id"
+              >
                 <q-item-section>
                   <q-item-label class="row items-center q-gutter-xs">
                     <span>{{ pkg.name }}</span>
@@ -193,7 +210,12 @@
 
         <q-list separator>
           <div v-for="pkg in offlineMapsStore.registryPackages" :key="pkg.id">
-            <q-item>
+            <q-item
+              clickable
+              :active="selectedPackageId === pkg.id"
+              active-class="bg-blue-1"
+              @click="selectedPackageId = pkg.id"
+            >
               <q-item-section>
                 <q-item-label class="row items-center q-gutter-xs">
                   <span>{{ pkg.name }}</span>
@@ -289,6 +311,7 @@ import { OFFLINE_VECTOR_STYLE_MISSING } from 'src/utils/vector-mbtiles-source'
 import { OFFLINE_MAPS_REQUIRE_NATIVE } from 'src/services/offline-maps-service'
 import { sourceKey } from 'src/stores/offline-maps-store'
 import { db } from 'src/db/db'
+import OfflineMapPackagesPreviewMap from 'src/components/offline/OfflineMapPackagesPreviewMap.vue'
 
 const layerLabelKeys = {
   VectorBasemap: 'vectorBasemapLayer',
@@ -299,6 +322,8 @@ const layerLabelKeys = {
 export default {
   name: 'OfflineMapManagement',
 
+  components: { OfflineMapPackagesPreviewMap },
+
   setup () {
     const offlineMapsStore = useOfflineMapsStore()
     const mapStore = useMapStore()
@@ -307,6 +332,7 @@ export default {
     const isLoadingPackages = ref(false)
     const isLoadingRegistry = ref(false)
     const downloadedKeys = ref(new Set())
+    const selectedPackageId = ref(null)
 
     return {
       offlineMapsStore,
@@ -314,12 +340,22 @@ export default {
       activeTab,
       isLoadingPackages,
       isLoadingRegistry,
-      downloadedKeys
+      downloadedKeys,
+      selectedPackageId
+    }
+  },
+
+  computed: {
+    activePackages () {
+      return this.activeTab === 'registry'
+        ? this.offlineMapsStore.registryPackages
+        : this.offlineMapsStore.myTiles
     }
   },
 
   watch: {
     activeTab (newTab) {
+      this.selectedPackageId = null
       if (newTab === 'packages') {
         this.loadMyPackages()
       } else if (newTab === 'registry') {
@@ -539,3 +575,12 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.preview-map-wrapper {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: white;
+}
+</style>

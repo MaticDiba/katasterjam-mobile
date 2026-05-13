@@ -16,9 +16,7 @@
         @change:center="centerChanged"
         @change:resolution="resolutionChanged"/>
       <CartoLayers/>
-      <LocationLayers
-        :view="view"
-        @centerChanged="centerChanged"/>
+      <LocationLayers :view="view"/>
       <CustomLocationLayers v-if="mapStore.getCustomLocationsVisible"/>
       <GpxLayers/>
       <RecordedTracksLayer/>
