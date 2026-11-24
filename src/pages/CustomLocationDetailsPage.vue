@@ -84,7 +84,7 @@
 
     <q-separator />
     <q-card-section>
-      <div class="q-ml-sm" v-html="customLocation.description"></div>
+      <div class="q-ml-sm" v-html="sanitizedDescription"></div>
     </q-card-section>
 
     <template v-if="loadingPhotos || photos.length > 0">
@@ -139,6 +139,7 @@ import { Feature } from 'ol'
 import { useLocalCustomLocationStore } from 'src/stores/local-custom-location-store'
 import { api } from 'src/boot/api'
 import { isOnline } from 'src/helpers/network'
+import DOMPurify from 'dompurify'
 export default {
   name: 'customLocationDetailsPage',
   components: { OrganizationsList, SimpleHeaderMap, AddPhotosDialog },
@@ -170,6 +171,11 @@ export default {
       fullPhotoUrls,
       showAddPhotos,
       localStore
+    }
+  },
+  computed: {
+    sanitizedDescription () {
+      return DOMPurify.sanitize(this.customLocation?.description ?? '', { ADD_ATTR: ['target'] })
     }
   },
   methods: {

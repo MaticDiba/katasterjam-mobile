@@ -75,7 +75,7 @@
 
     <q-separator />
     <q-card-section>
-      <div class="q-ml-sm" v-html="excursion.description"></div>
+      <div class="q-ml-sm" v-html="sanitizedDescription"></div>
     </q-card-section>
 
     <q-separator />
@@ -124,6 +124,7 @@ import { api } from 'src/boot/api'
 import OrganizationsList from 'src/components/organizations/OrganizationsList.vue'
 import { useLocalGpxStore } from 'stores/local-gpx-store'
 import { formatDistance } from 'src/helpers/gpx-file'
+import DOMPurify from 'dompurify'
 
 export default {
   name: 'ExcursionDetailsPage',
@@ -149,6 +150,9 @@ export default {
     },
     canJoinExcursion () {
       return !this.excursion.meParticipant && !this.excursion.requestedJoin
+    },
+    sanitizedDescription () {
+      return DOMPurify.sanitize(this.excursion?.description ?? '', { ADD_ATTR: ['target'] })
     }
   },
   methods: {
